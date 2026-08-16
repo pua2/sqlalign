@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+No functional change. `1.0.0` was tagged before the package was ever published,
+so this is the first version to reach an index.
+
 ## 1.0.0
 
 First release.
