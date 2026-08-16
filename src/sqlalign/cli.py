@@ -322,6 +322,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"sqlalign: {e}", file=sys.stderr)
             rc = 2
             continue
+        except UnicodeDecodeError:
+            # Guessing at an encoding would mean writing the file back in a
+            # different one, which is precisely the kind of change sqlalign
+            # exists not to make. The file is reported and left exactly as it is.
+            print(f"sqlalign: {name}: not valid UTF-8 — left unchanged",
+                  file=sys.stderr)
+            rc = 2
+            continue
         try:
             style = style_for(path)
         except configfile.ConfigError as e:   # a broken config must not be guessed past

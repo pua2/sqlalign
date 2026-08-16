@@ -123,3 +123,44 @@ def test_the_package_carries_release_metadata():
         assert meta.get(field), f"pyproject is missing {field}"
     assert any("Homepage" in u or "Source" in u for u in meta.get_all("Project-URL") or [])
     assert meta.get("Summary") != "", "description is empty"
+
+
+# ---- files sqlalign cannot decode -----------------------------------------
+#
+# The read is `path.open()`, which is UTF-8. A file in any other encoding raised
+# UnicodeDecodeError -- a ValueError, so it slipped past the OSError handler and
+# aborted the whole run with a traceback.
+
+def _bytes_file(tmp_path, name, raw):
+    path = tmp_path / name
+    path.write_bytes(raw)
+    return path
+
+
+@pytest.mark.parametrize("name,raw", [
+    ("latin1.sql", 'select "café" from t;\n'.encode("latin-1")),
+    ("utf16.sql", "select a from t;\n".encode("utf-16")),
+    ("binary.sql", bytes(range(256))),
+])
+def test_a_file_that_is_not_utf8_is_reported_and_left_alone(tmp_path, capsys, name, raw):
+    """Guessing an encoding would mean writing the file back in a different
+    one, which is the kind of change sqlalign exists not to make."""
+    from sqlalign.cli import main
+
+    path = _bytes_file(tmp_path, name, raw)
+    assert main([str(path)]) == 2
+    assert path.read_bytes() == raw, "the file was modified"
+    assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_a_file_that_is_not_utf8_does_not_abort_the_run(tmp_path):
+    """Previously the traceback took the whole invocation with it, so every
+    file after the first undecodable one was silently never formatted."""
+    from sqlalign.cli import main
+
+    _bytes_file(tmp_path, "bad.sql", 'select "café" from t;\n'.encode("latin-1"))
+    good = tmp_path / "good.sql"
+    good.write_text("select a,b from t;\n")
+
+    assert main([str(tmp_path)]) == 2
+    assert good.read_text().startswith("SELECT a"), "the run stopped at the bad file"
