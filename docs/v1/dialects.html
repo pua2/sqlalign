@@ -338,9 +338,10 @@ FROM (SELECT a
 <p>The check renders the node and looks at what comes out, rather than consulting a
 list of dialects — so if sqlglot ever grows Postgres support, this stops
 declining on its own.</p>
-<p>Run <code>sqlalign --report</code> over your own SQL rather than trusting this list — it
-counts what actually declined, ranked, so you can see whether any of it matters
-to you.</p>
+<p>Run <code>sqlalign --report --check</code> over your own SQL rather than trusting this
+list — it counts what actually declined, ranked, so you can see whether any of
+it matters to you. <code>--check</code> is what keeps it a survey: <code>--report</code> adds output
+without changing the mode, so on its own it would rewrite the files it counted.</p>
 <p>The legacy comma join — <code>FROM a, b</code> — formats, and is worth a note because it
 was once declined. It parses as a join with no condition, exactly like
 <code>CROSS JOIN</code> does, and rebuilding it through the join keyword would emit

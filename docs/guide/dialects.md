@@ -171,9 +171,10 @@ The check renders the node and looks at what comes out, rather than consulting a
 list of dialects — so if sqlglot ever grows Postgres support, this stops
 declining on its own.
 
-Run `sqlalign --report` over your own SQL rather than trusting this list — it
-counts what actually declined, ranked, so you can see whether any of it matters
-to you.
+Run `sqlalign --report --check` over your own SQL rather than trusting this
+list — it counts what actually declined, ranked, so you can see whether any of
+it matters to you. `--check` is what keeps it a survey: `--report` adds output
+without changing the mode, so on its own it would rewrite the files it counted.
 
 The legacy comma join — `FROM a, b` — formats, and is worth a note because it
 was once declined. It parses as a join with no condition, exactly like

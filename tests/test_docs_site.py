@@ -213,6 +213,25 @@ def test_every_documented_choice_list_matches_the_parser():
     assert not stale, stale
 
 
+def test_no_doc_example_runs_report_as_if_it_were_read_only():
+    """`--report` and `--max-declines` add output without changing the mode, so
+    on their own they rewrite the files they counted.
+
+    The dialects guide told readers to run `sqlalign --report` over their own
+    SQL to see what declined — following it would have reformatted the
+    repository they were only trying to survey.
+    """
+    offenders = []
+    for md in [*sorted((ROOT / "docs" / "guide").glob("*.md")), ROOT / "README.md"]:
+        for number, line in enumerate(md.read_text().splitlines(), 1):
+            if "sqlalign --report" not in line and "sqlalign --max-declines" not in line:
+                continue
+            if not any(mode in line for mode in ("--check", "--stdout", "--diff")):
+                offenders.append(f"{md.name}:{number}: {line.strip()}")
+    assert not offenders, (
+        "these would rewrite the reader's files; pair with --check: " + str(offenders))
+
+
 def test_every_flag_has_help_text():
     """`--help` is the reference most people read, and the page is generated
     from it — a flag with no help is blank in both."""

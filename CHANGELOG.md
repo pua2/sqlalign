@@ -2,7 +2,29 @@
 
 ## 1.0.2
 
+### Fixed
+
+`py.typed` was missing, so every type checker skipped the package while the
+`Typing :: Typed` classifier said the opposite. sqlalign is annotated and
+`format_sql` is importable; both now work as advertised.
+
+`--gui`'s missing-tkinter message went to stdout rather than stderr.
+
+`--lint` no longer warns about a sqlfluff patch release. The coexistence config
+is checked against a known sqlfluff, and any difference warned; sqlfluff 4.3.0
+then shipped, so every run printed a note about a release that had moved nothing
+sqlalign uses. The check now compares the series, and is silent for a sqlfluff
+older than the checked one -- the floor on the `lint` extra bounds that, and CI
+now runs the coexistence tests against it. The mappings are verified against
+sqlfluff 4.3.0.
+
 ### Documentation
+
+`--report` and `--max-declines` add output without changing the mode, so on
+their own they rewrite the files they counted. The dialects guide told you to
+run `sqlalign --report` over your own SQL to see what declined, which would have
+reformatted the repository you were surveying. Both the guide and the flag's
+help now say to pair it with `--check`.
 
 Install instructions said `uv tool install .`, which installs from a clone. That
 was the only option before the package was published; it is now
@@ -15,19 +37,6 @@ Also corrected: `--preset` documented four of its six values (`gitlab` and
 README linked the settings reference as a raw HTML file rather than to the
 published site. Documented choice lists are now checked against the argument
 parser by a test.
-
-### Fixed
-
-`--lint` no longer warns about a sqlfluff patch release.
-
-The coexistence config is checked against a known sqlfluff, and any difference
-warned. sqlfluff 4.3.0 then shipped, so every `--lint` run printed a note about
-a release that had moved nothing sqlalign uses. The check now compares the
-series rather than the exact release, and is silent for a sqlfluff older than
-the checked one -- the floor on the `lint` extra is what bounds that, and CI
-now runs the coexistence tests against it.
-
-The mappings are verified against sqlfluff 4.3.0.
 
 ## 1.0.1
 

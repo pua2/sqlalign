@@ -117,7 +117,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="(experimental) open the settings panel with a live preview, and exit")
     p.add_argument("--report", action="store_true",
                    help="print a coverage summary: how many statements were "
-                        "formatted, and what the rest declined on")
+                        "formatted, and what the rest declined on. Adds output "
+                        "without changing the mode, so on its own it still "
+                        "rewrites; pair it with `--check` to survey without "
+                        "writing")
     p.add_argument("--max-declines", type=int, metavar="N",
                    help="exit 1 if more than N statements are passed through "
                         "unformatted (implies --report)")
