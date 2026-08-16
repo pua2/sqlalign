@@ -355,10 +355,12 @@ else is an error unless you pass <code>--no-strict-config</code>.</p>
 <code>decimal_style</code> · <code>exclude</code> · <code>format_dollar_bodies</code> · <code>keyword_case</code> ·
 <code>neq_style</code> · <code>on_placement</code> · <code>preset</code> · <code>protect_templating</code> · <code>river_gutter</code> ·
 <code>select_indent</code> · <code>select_placement</code> · <code>table_alias_style</code> · <code>width</code></p>
-<p><code>--dialect</code> and <code>--line-ending</code> are the only settings with no config key. The
-three <code>--no-*</code> flags map onto the positive keys: <code>--no-align</code> is <code>align = false</code>,
-<code>--no-protect-templating</code> is <code>protect_templating = false</code>, <code>--no-format-bodies</code>
-is <code>format_dollar_bodies = false</code>.</p>
+<p><code>--dialect</code> and <code>--line-ending</code> are the only settings with no config key. Three
+of the four <code>--no-*</code> flags map onto the positive keys: <code>--no-align</code> is
+<code>align = false</code>, <code>--no-protect-templating</code> is <code>protect_templating = false</code>, and
+<code>--no-format-bodies</code> is <code>format_dollar_bodies = false</code>. The fourth,
+<code>--no-strict-config</code>, is not a style setting at all — it changes how the config
+file itself is read.</p>
 <h2 id="style">Style<a class="anchor" href="#style" aria-label="Link to this section">#</a></h2>
 <table>
 <thead>
@@ -370,7 +372,7 @@ is <code>format_dollar_bodies = false</code>.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>--preset {compact,dbt,house,trailing}</code></td>
+<td><code>--preset {compact,dbt,gitlab,house,river,trailing}</code></td>
 <td>none (the <code>house</code> defaults)</td>
 <td>Named starting point. Sets a <strong>base</strong> that config keys and flags then layer on top of, so <code>--preset compact --comma-position trailing</code> means both. Not passing it leaves any <code>preset</code> key in your config file in force.</td>
 </tr>

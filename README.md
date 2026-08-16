@@ -110,13 +110,28 @@ LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
 ## Install
 
 ```sh
-uv tool install .          # installs the `sqlalign` command
-# or, for development:
-uv sync                    # create the venv with dev deps (pytest, sqlfluff)
+pip install sqlalign
+```
+
+That puts a `sqlalign` command on your PATH. To keep it out of a project's
+environment, `uv tool install sqlalign` does the same thing in isolation.
+
+`--lint` runs sqlfluff over the formatted result and needs the optional extra:
+
+```sh
+pip install 'sqlalign[lint]'
 ```
 
 Requires Python ≥ 3.12. Runtime dependency: `sqlglot` (pinned to the 30.14.x
 line — the layout engine depends on exact AST shapes; see `pyproject.toml`).
+
+To work on sqlalign itself, install from a clone instead — that adds the dev
+tools (`pytest`, `ruff`, `sqlfluff`):
+
+```sh
+git clone https://github.com/pua2/sqlalign && cd sqlalign
+uv sync
+```
 
 ## Usage
 
@@ -334,7 +349,9 @@ The fixtures are the spec — grow them, never weaken them:
 
 ## Documentation
 
-The [settings reference](docs/v1/settings.html) is the page to start with: it
+The documentation site is at **<https://sqlalign.lumaru.app/>**.
+
+The [settings reference](https://sqlalign.lumaru.app/v1/settings.html) is the page to start with: it
 shows every setting with the same SQL rendered under each of its values.
 
 To read the site locally:
@@ -343,8 +360,8 @@ To read the site locally:
 python3 -m http.server -d docs 8000    # then open http://localhost:8000/
 ```
 
-**The site is generated and committed.** There is no CI and GitHub Pages runs no
-build step, so the HTML in `docs/v1/` is what ships. Prose is authored in
+**The site is generated and committed.** GitHub Pages runs no build step, so the
+HTML in `docs/v1/` is what ships. Prose is authored in
 `docs/guide/*.md`; every configuration example is produced by *running the
 formatter* at build time, so no example on the site can drift from what the tool
 does. After editing a guide page, a setting, or anything that changes output:
@@ -364,8 +381,9 @@ working untouched.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `uv sync`, then `uv run pytest
--q` and `uv run ruff check .` must both be clean. The goldens in
-`tests/fixtures/expected/` are the specification, not snapshots.
+-q` and `uv run ruff check .` must both be clean — CI runs the same checks on
+every pull request. The goldens in `tests/fixtures/expected/` are the
+specification, not snapshots.
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md).
 

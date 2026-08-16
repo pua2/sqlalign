@@ -11,7 +11,9 @@ uv run pytest -q        # ~3,300 tests, about 40 seconds
 uv run ruff check .
 ```
 
-Both must be clean before a pull request. There is no other gate.
+Both must be clean before a pull request. CI runs the same two checks on
+Python 3.12 and 3.13, plus the goldens, the docs site and the oldest
+supported sqlfluff, each as its own job so a red build says why.
 
 ## The goldens are the specification
 
