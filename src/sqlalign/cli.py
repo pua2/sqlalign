@@ -1,6 +1,10 @@
 import argparse
 import difflib
+import errno
+import os
+import shutil
 import sys
+import tempfile
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -9,6 +13,38 @@ from sqlalign.formatter import format_sql
 from sqlalign.lint import LintUnavailable, lint, version_warning
 from sqlalign.sqlfluffconfig import sqlfluff_config
 from sqlalign.style import PRESETS, SUPPORTED_DIALECTS, Style
+
+
+def _write_atomically(path: Path, text: str) -> None:
+    """Replace the contents of `path` in a single step.
+
+    `open(path, "w")` truncates before it writes, so an interrupted run leaves
+    the file short: the input is destroyed and the replacement never arrives.
+    Writing a neighbour and renaming it means what is on disk is either the
+    whole old file or the whole new one, and a run that is cut off half way
+    through a repository has changed nothing it did not finish.
+
+    The temp file is created in the target's own directory so the rename cannot
+    cross a filesystem, and the symlink is resolved first so a linked file is
+    written THROUGH rather than replaced by a regular file.
+    """
+    target = path.resolve()
+    # `os.replace` only needs a writable directory, so a read-only file would
+    # otherwise be silently overwritten -- which `open(path, "w")` refused.
+    if not os.access(target, os.W_OK):
+        raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(target))
+
+    handle, name = tempfile.mkstemp(dir=target.parent,
+                                    prefix=f".{target.name}.", suffix=".tmp")
+    temp = Path(name)
+    try:
+        with os.fdopen(handle, "w", newline="") as f:
+            f.write(text)
+        shutil.copymode(target, temp)
+        os.replace(temp, target)
+    except BaseException:
+        temp.unlink(missing_ok=True)
+        raise
 
 
 def _is_excluded(path: Path, root: Path, patterns: list[str]) -> bool:
@@ -338,8 +374,14 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"would reformat {name}")
                 rc = max(rc, 1)
         elif formatted != original:
-            with open(path, "w", newline="") as f:
-                f.write(formatted)
+            try:
+                _write_atomically(path, formatted)
+            except OSError as e:
+                # A per-file failure is reported and skipped, like an unreadable
+                # file above -- one unwritable file must not abort the run.
+                print(f"sqlalign: {e}", file=sys.stderr)
+                rc = 2
+                continue
 
         if args.lint:
             # Lint what would be written, so --check and --stdout report on the

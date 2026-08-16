@@ -4,6 +4,19 @@
 
 ### Fixed
 
+**An interrupted run could truncate the file it was formatting.** Writing with
+`open(path, "w")` empties the file before the replacement is written, so a run
+stopped part way through -- Ctrl-C over a large repository, a full disk, a
+killed process -- left some file holding a prefix of its formatted self, with
+the original gone. Files are now written to a neighbour and renamed into place,
+so what is on disk is either the whole old file or the whole new one. Symlinks
+are written through rather than replaced, and permissions are carried across.
+
+**An unwritable file raised a traceback and aborted the run.** A read-only file
+now reports `sqlalign: [Errno 13] Permission denied: <path>`, exits `2`, and
+leaves the remaining files to process -- which is what the exit-code table
+already documented.
+
 `py.typed` was missing, so every type checker skipped the package while the
 `Typing :: Typed` classifier said the opposite. sqlalign is annotated and
 `format_sql` is importable; both now work as advertised.
