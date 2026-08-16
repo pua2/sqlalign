@@ -1,6 +1,6 @@
 [project]
 name = "sqlalign"
-version = "1.0.0"
+version = "1.0.1"
 description = "A SQL formatter that cannot change what your SQL means"
 readme = "README.md"
 requires-python = ">=3.12"
