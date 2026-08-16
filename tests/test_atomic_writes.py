@@ -135,6 +135,21 @@ def test_one_unwritable_file_does_not_abort_the_run(tmp_path, capsys):
         blocked.chmod(0o644)
 
 
+def test_an_unwritable_directory_names_the_file_the_user_named(tmp_path, capsys):
+    """The temp file is an implementation detail. Reporting `Permission denied:
+    .q.sql.ab12cd.tmp` sends someone looking for a file they never created."""
+    path = _sql(tmp_path)
+    tmp_path.chmod(0o555)
+    try:
+        assert main([str(path)]) == 2
+        error = capsys.readouterr().err
+        assert str(path) in error, error
+        assert ".tmp" not in error, error
+        assert path.read_text() == ORIGINAL
+    finally:
+        tmp_path.chmod(0o755)
+
+
 def test_the_ordinary_write_still_formats(tmp_path):
     """The boring case, so a regression in the machinery above is not mistaken
     for a formatting change."""

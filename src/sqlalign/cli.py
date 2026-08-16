@@ -34,8 +34,13 @@ def _write_atomically(path: Path, text: str) -> None:
     if not os.access(target, os.W_OK):
         raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(target))
 
-    handle, name = tempfile.mkstemp(dir=target.parent,
-                                    prefix=f".{target.name}.", suffix=".tmp")
+    try:
+        handle, name = tempfile.mkstemp(dir=target.parent,
+                                        prefix=f".{target.name}.", suffix=".tmp")
+    except OSError as e:
+        # An unwritable DIRECTORY fails here. Reported against the file the user
+        # named rather than the temp file they have never heard of.
+        raise OSError(e.errno, e.strerror, str(target)) from e
     temp = Path(name)
     try:
         with os.fdopen(handle, "w", newline="") as f:
