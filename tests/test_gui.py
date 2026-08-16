@@ -13,6 +13,11 @@ one layer up.
 import dataclasses
 
 import pytest
+
+# tkinter is stdlib but not always packaged: a uv-managed Python on Linux
+# has no `_tkinter`, and neither does a slim container. The GUI is optional,
+# so the whole module skips rather than failing the suite.
+pytest.importorskip("tkinter")
 from conftest import DIALECTS, load_pair
 from conftest import SAMPLES as SAMPLES_ALL
 
