@@ -54,6 +54,33 @@ jobs:
       - name: Goldens are byte-exact
         run: uv run pytest -q -k goldens_unchanged
 
+  # `--lint` supports a RANGE of sqlfluff, but the matrix above only ever runs
+  # the top of it. The rule names and config keys the coexistence config emits
+  # are versioned surface, and `version_warning` is deliberately silent for a
+  # sqlfluff older than the one the mappings were checked against -- so if the
+  # floor broke, a user on it would get a wrong config and no warning at all.
+  # Nothing but this job would notice.
+  sqlfluff-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+
+      # The oldest release the `lint` extra allows. Pinned exactly: "the floor"
+      # is only meaningful if it is the floor that ran.
+      - name: Install the oldest supported sqlfluff
+        run: uv pip install 'sqlfluff==4.2.0'
+
+      - name: The coexistence config still holds
+        run: |
+          uv run --no-sync python -c "import sqlfluff; print(sqlfluff.__version__)"
+          uv run --no-sync pytest -q tests/test_sqlfluff_coexistence.py \
+                                    tests/test_lint_flag.py \
+                                    tests/test_bodylint.py
+
   # docs/v1 is generated and committed, so a stale build ships. Rebuilding here
   # proves the committed site matches its generator.
   docs:

@@ -14,11 +14,5 @@ build/
 # the published site.
 docs/superpowers/
 
-# scratch scripts (e.g. from exploratory agents) must not be committed
+# scratch scripts must not be committed
 /probe_*.py
-
-# Agent/assistant working files, if any ever land here
-CLAUDE.md
-AGENTS.md
-.claude/
-.superpowers/
