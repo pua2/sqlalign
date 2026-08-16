@@ -1,0 +1,2 @@
+-- #6: CTEs
+with monthly_revenue as (select customer_id, date_trunc('month', order_date) as month, sum(total) as revenue from orders group by 1, 2), top_customers as (select customer_id from monthly_revenue group by customer_id having sum(revenue) > 10000) select m.customer_id, m.month, m.revenue from monthly_revenue m join top_customers t on t.customer_id = m.customer_id order by m.customer_id, m.month;

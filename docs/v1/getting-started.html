@@ -1,0 +1,782 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started — sqlalign docs</title>
+<meta name="description" content="Getting started — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html" class='here'>Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html">Settings reference</a>
+<a href="style.html">The house style</a>
+<a href="cli.html">CLI reference</a>
+<a href="dialects.html">Dialects</a>
+<a href="architecture.html">Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><p>This page takes you from nothing installed to sqlalign running over a whole
+repository and gating your CI.</p>
+<p>sqlalign formats <strong>presentation only</strong>. Every statement it touches is re-parsed
+and AST-compared against your input; if the output would mean anything different
+— or if the engine does not fully model the construct — that statement is passed
+through <strong>byte-identical</strong> with a warning instead. It does not lint, and it will
+not rewrite your SQL for you.</p>
+<h2 id="install">Install<a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
+<p>sqlalign needs <strong>Python 3.12 or newer</strong> and has exactly one runtime dependency:
+<code>sqlglot</code>, pinned to the <code>30.14.x</code> line. (The layout engine reads exact AST
+shapes, so the pin is deliberate — see the comment in <code>pyproject.toml</code>.)</p>
+<pre><code class="language-sh">uv tool install .
+</code></pre>
+<p>That installs a <code>sqlalign</code> command on your PATH. Check it:</p>
+<pre><code class="language-sh">sqlalign --help
+</code></pre>
+<p>For development on sqlalign itself, work from the repo venv instead — this adds
+the dev tools (<code>pytest</code>, <code>ruff</code>, <code>sqlfluff</code>):</p>
+<pre><code class="language-sh">uv sync
+</code></pre>
+<h2 id="your-first-format">Your first format<a class="anchor" href="#your-first-format" aria-label="Link to this section">#</a></h2>
+<p>Save this as <code>revenue.sql</code>:</p>
+<pre><code class="language-sql">select c.customer_id, c.email, sum(o.total) as lifetime_value, count(*) as order_count
+from customers c join orders o on o.customer_id = c.customer_id
+where o.status = 'complete' and o.order_date &gt;= '2026-01-01'
+group by c.customer_id, c.email
+having sum(o.total) &gt; 500
+order by lifetime_value desc;
+</code></pre>
+<p>Print the formatted result without touching the file:</p>
+<pre><code class="language-sh">sqlalign --stdout revenue.sql
+</code></pre>
+<pre><code class="language-sql">SELECT c.customer_id
+     , c.email
+     , SUM(o.total) AS lifetime_value
+     , COUNT(*)     AS order_count
+FROM customers c
+JOIN orders    o ON o.customer_id = c.customer_id
+WHERE o.status      = 'complete'
+  AND o.order_date &gt;= '2026-01-01'
+GROUP BY c.customer_id
+       , c.email
+HAVING SUM(o.total) &gt; 500
+ORDER BY lifetime_value DESC;
+</code></pre>
+<p>The <code>AS</code> clauses, the operators in <code>WHERE</code>, and the table aliases in the <code>FROM</code>
+block are each padded into a column. That is the house style; it is a fixpoint
+resolver pass, not a search-and-replace over printed text, so it composes with
+line wrapping instead of fighting it.</p>
+<p>Now rewrite the file for real. In-place is the default — no flag:</p>
+<pre><code class="language-sh">sqlalign revenue.sql
+</code></pre>
+<p>It prints nothing on success. Run it again and nothing changes: formatting is
+idempotent, and the golden test suite asserts that.</p>
+<h2 id="look-before-you-write">Look before you write<a class="anchor" href="#look-before-you-write" aria-label="Link to this section">#</a></h2>
+<p>Three flags control where the output goes. They are <strong>mutually exclusive</strong> — pass
+at most one.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Writes the file?</th>
+<th>Prints</th>
+<th>Exit code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(none)</em></td>
+<td>yes</td>
+<td>nothing</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>--stdout</code></td>
+<td>no</td>
+<td>the formatted SQL</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>--check</code></td>
+<td>no</td>
+<td><code>would reformat &lt;path&gt;</code> per file</td>
+<td><code>1</code> if any file would change</td>
+</tr>
+<tr>
+<td><code>--diff</code></td>
+<td>no</td>
+<td>a unified diff per file</td>
+<td><code>1</code> if any file would change</td>
+</tr>
+</tbody>
+</table>
+<p><code>--check</code> is for CI logs you want to stay readable; <code>--diff</code> is for when you want
+to see the change itself:</p>
+<pre><code class="language-sh">sqlalign --diff revenue.sql
+</code></pre>
+<pre><code class="language-diff">--- revenue.sql
++++ revenue.sql (formatted)
+@@ -1,6 +1,12 @@
+-select c.customer_id, c.email, sum(o.total) as lifetime_value, count(*) as order_count
+-from customers c join orders o on o.customer_id = c.customer_id
+-where o.status = 'complete' and o.order_date &gt;= '2026-01-01'
+-group by c.customer_id, c.email
+-having sum(o.total) &gt; 500
+-order by lifetime_value desc;
++SELECT c.customer_id
++     , c.email
++     , SUM(o.total) AS lifetime_value
++     , COUNT(*)     AS order_count
++FROM customers c
++JOIN orders    o ON o.customer_id = c.customer_id
++WHERE o.status      = 'complete'
++  AND o.order_date &gt;= '2026-01-01'
++GROUP BY c.customer_id
++       , c.email
++HAVING SUM(o.total) &gt; 500
++ORDER BY lifetime_value DESC;
+</code></pre>
+<h2 id="formatting-a-directory">Formatting a directory<a class="anchor" href="#formatting-a-directory" aria-label="Link to this section">#</a></h2>
+<p>Pass a directory and sqlalign walks it recursively for <code>*.sql</code>, in sorted order
+so a run is reproducible:</p>
+<pre><code class="language-sh">sqlalign --check .
+</code></pre>
+<pre><code>would reformat models/gen_out.gen.sql
+would reformat models/marts/rollup.sql
+would reformat models/users.sql
+would reformat vendor/legacy.sql
+</code></pre>
+<h3 id="excluding-files">Excluding files<a class="anchor" href="#excluding-files" aria-label="Link to this section">#</a></h3>
+<p>Generated SQL and vendored SQL usually should not be reformatted. <code>--exclude</code>
+takes a glob and is repeatable:</p>
+<pre><code class="language-sh">sqlalign --check --exclude 'vendor/*' --exclude '*.gen.sql' .
+</code></pre>
+<pre><code>would reformat models/marts/rollup.sql
+would reformat models/users.sql
+</code></pre>
+<p>Two things to know:</p>
+<ul>
+<li>
+<p>Patterns are matched against each file's path <strong>relative to the directory you
+named</strong>, and also against its bare filename — so <code>vendor/*</code> and <code>*.gen.sql</code>
+both work above.</p>
+</li>
+<li>
+<p><strong>A file you name explicitly on the command line is never excluded.</strong> Asking
+for it by name is a clearer signal than a pattern in a config file:</p>
+<pre><code class="language-sh">sqlalign --check --exclude 'vendor/*' vendor/legacy.sql
+# would reformat vendor/legacy.sql
+</code></pre>
+</li>
+</ul>
+<p>Once the patterns are right, drop <code>--check</code> to actually write:</p>
+<pre><code class="language-sh">sqlalign --exclude 'vendor/*' --exclude '*.gen.sql' .
+</code></pre>
+<p>Rather than repeat those flags forever, commit them. sqlalign reads a
+<code>.sqlalign.toml</code> (or a <code>[tool.sqlalign]</code> table in <code>pyproject.toml</code>) discovered by
+walking up from each file:</p>
+<pre><code class="language-toml"># .sqlalign.toml
+exclude = [&quot;vendor/*&quot;, &quot;*.gen.sql&quot;]
+</code></pre>
+<p>Run <code>sqlalign --show-config &lt;path&gt;</code> at any point to print the settings that would
+actually apply, as TOML, with the config file they came from on the first line.</p>
+<h2 id="skipping-one-statement">Skipping one statement<a class="anchor" href="#skipping-one-statement" aria-label="Link to this section">#</a></h2>
+<p>Put <code>-- sqlalign: skip</code> on the line above a statement and that statement passes
+through byte-identical. Its neighbours still format:</p>
+<pre><code class="language-sql">-- sqlalign: skip
+select   a,b    from t;
+select c, d from u;
+</code></pre>
+<pre><code class="language-sh">sqlalign --stdout skip.sql
+</code></pre>
+<pre><code class="language-sql">-- sqlalign: skip
+select   a,b    from t;
+SELECT c
+     , d
+FROM u;
+</code></pre>
+<h2 id="when-sqlalign-declines">When sqlalign declines<a class="anchor" href="#when-sqlalign-declines" aria-label="Link to this section">#</a></h2>
+<p>sqlalign would rather leave your SQL alone than render it wrong. A statement it
+cannot reproduce exactly is emitted unchanged, with a warning on <strong>stderr</strong>:</p>
+<pre><code class="language-sh">sqlalign --stdout passthru.sql
+</code></pre>
+<pre><code>sqlalign: passthru.sql: unsupported construct (Pivot), passed through: select * from t pivot (sum(x) for y in (
+</code></pre>
+<pre><code class="language-sql">select * from t pivot (sum(x) for y in (1, 2)) p;
+</code></pre>
+<p>Unparseable input behaves the same way rather than blowing up the run:</p>
+<pre><code>sqlalign: broken.sql: passthrough (parse error line 1): this is not sql at all ((( ;
+</code></pre>
+<p>There is a second kind of message, and it means something different:</p>
+<pre><code>sqlalign: q.sql: formatting would change semantics, passed through unformatted: ...
+</code></pre>
+<p>That one is a <strong>bug report</strong>, not a decline. It means sqlalign rendered the
+statement, read its own output back, and found it no longer meant the same
+thing — so it threw the output away. The construct is not unsupported; the
+renderer is wrong. Two shipped that way and both were found by accident (every
+lowercase user-defined function, and every quoted column alias), so the test
+suite now sweeps for that wording specifically. If you see it, it is worth
+reporting.</p>
+<p><strong>A passthrough is not a failure.</strong> Both of those runs exit <code>0</code> — the file is
+valid output, just unformatted.</p>
+<p>That is safe but invisible: a CI run stays green with any fraction of a
+repository unformatted, and nothing tells you which fraction. <code>--report</code>
+counts it:</p>
+<pre><code class="language-console">$ sqlalign --report --check models/
+  1,204 statements   1,151 formatted (95.6%)   53 declined
+
+  declined by cause
+      38  unsupported  Pivot
+      12  unsupported  Subquery
+       3  parse        parse error
+</code></pre>
+<p><code>--max-declines N</code> turns that into a gate — exit <code>1</code> if more than N statements
+were passed through. Start it at whatever your repository reports today and
+ratchet it down; it stops new unformattable SQL arriving unnoticed.</p>
+<p>The causes are ranked, so the list doubles as a priority order for what to
+implement next — measured on your SQL rather than guessed at. A
+<code>-- sqlalign: skip</code> counts too, under its own <code>skipped</code> kind, so a deliberate
+opt-out is distinguishable from a gap in the tool.</p>
+<h2 id="linting-inside-bodies">Linting inside <code>$$</code> bodies<a class="anchor" href="#linting-inside-bodies" aria-label="Link to this section">#</a></h2>
+<p>sqlfluff cannot lint a plpgsql body. To its parser the whole body is one string
+literal, so a function full of badly-written SQL passes clean — and in a
+repository that keeps logic in functions, that is a large blind spot. It is not
+a rule sqlfluff is missing; it is the shape of the parse.</p>
+<p>sqlalign already has to find those statements in order to format them, so
+<code>--lint</code> hands them to sqlfluff as well. Given this function:</p>
+<pre><code class="language-sql">CREATE FUNCTION report() RETURNS int AS $$
+BEGIN
+
+SELECT * FROM orders o, customers c WHERE o.cid = c.id;
+
+RETURN 1;
+
+END;
+$$ LANGUAGE plpgsql;
+</code></pre>
+<p>sqlfluff on its own sees the header and nothing else:</p>
+<pre><code>L:   1 | P:  17 | CP03 | Function names must be upper case.
+L:   1 | P:  34 | CP05 | Datatypes must be upper case. [capitalisation.types]
+All Finished!
+</code></pre>
+<p>Through sqlalign, the body is linted too:</p>
+<pre><code class="language-console">$ sqlalign --check --lint report.sql
+L:   1 | P:  17 | CP03 | Function names must be upper case.
+All Finished!
+== [report.sql] inside $$ bodies (sqlfluff cannot reach these on its own)
+L:   8 | P:   1 | AM04 | Query produces an unknown number of result columns. [ambiguous.column_count]
+L:   8 | P:   8 | RF02 | Unqualified reference '*' found in select with more than one referenced table/view. [references.qualification]
+</code></pre>
+<p>Line 8 is line 8 of the file. sqlalign lints a <em>view</em> of it — the same text with
+the plpgsql scaffolding replaced by spaces, so every line and column stays where
+it was. Blanking rather than deleting is the point: delete, and every column
+after it shifts, and a finding would point at the wrong place.</p>
+<p>Two things follow from how this works:</p>
+<ul>
+<li><strong>The body is linted after formatting</strong>, like the rest of the file, so
+whitespace and keyword-case findings inside a body are already fixed by the
+time sqlfluff sees it. What surfaces is what formatting cannot fix — the
+semantic rules.</li>
+<li><strong>Statements inside an <code>IF … THEN</code> branch are not covered.</strong> The layout
+models a single-statement branch, so there is no statement span to lint.</li>
+</ul>
+<h2 id="running-sqlfluff-alongside-it">Running sqlfluff alongside it<a class="anchor" href="#running-sqlfluff-alongside-it" aria-label="Link to this section">#</a></h2>
+<p>sqlalign and sqlfluff overlap, and left alone they fight — <code>sqlfluff fix</code> will
+undo the alignment on every run:</p>
+<pre><code class="language-sql">-- sqlalign's output                  -- after stock `sqlfluff fix`
+SELECT cust.customer_id               SELECT
+     , cust.email                         cust.customer_id,
+FROM customers    cust                    cust.email
+INNER JOIN orders ord ON …            FROM customers AS cust
+WHERE ord.total    &gt; 0                INNER JOIN orders AS ord ON …
+  AND cust.segment = 'ent';           WHERE
+                                          ord.total &gt; 0
+                                          AND cust.segment = 'ent';
+</code></pre>
+<p>The fix is the one Prettier and <code>eslint-config-prettier</code> settled on: the
+formatter owns layout, and the linter is told to stop having opinions about it.</p>
+<pre><code class="language-console">sqlalign --print-sqlfluff-config &gt; .sqlfluff
+</code></pre>
+<p>With that in place <code>sqlfluff fix</code> leaves sqlalign's output byte-identical.</p>
+<p>The generated config does two things. It excludes sqlfluff's whole <code>layout</code>
+rule <strong>group</strong> — by group rather than by name, so a sqlfluff upgrade that adds a
+layout rule cannot start failing your formatted SQL. And it translates the
+settings where both tools have an opinion (<code>keyword_case</code>, <code>table_alias_style</code>,
+<code>neq_style</code>) into the matching sqlfluff rule config, so the two agree instead of
+contradicting each other.</p>
+<p>Every <strong>semantic</strong> rule stays on. Those lint your SQL rather than sqlalign's
+whitespace, and sqlalign preserves the choices they are about — it would be the
+wrong trade to silence them for a formatting truce.</p>
+<p>It reads your effective settings, so run it where your config lives:</p>
+<pre><code class="language-console">sqlalign --print-sqlfluff-config models/orders.sql &gt; .sqlfluff
+</code></pre>
+<h3 id="one-command-instead-of-two">One command instead of two<a class="anchor" href="#one-command-instead-of-two" aria-label="Link to this section">#</a></h3>
+<p><code>--lint</code> formats and then runs sqlfluff over the result:</p>
+<pre><code class="language-console">$ pip install 'sqlalign[lint]'
+$ sqlalign --lint models/orders.sql
+== [models/orders.sql] FAIL
+L:   4 | P:   1 | AM05 | Join clauses should be fully qualified. [ambiguous.join]
+All Finished!
+</code></pre>
+<p>sqlfluff stays an <strong>optional</strong> dependency — sqlalign's own guarantee does not
+rest on a linter, so neither does its install.</p>
+<p>It lints what <em>would</em> be written, so <code>--lint --check</code> reports on the formatted
+result rather than on whatever is currently on disk. Exit codes are <code>0</code> clean,
+<code>1</code> findings (or <code>--check</code> changes), <code>2</code> an error.</p>
+<p>A committed <code>.sqlfluff</code> wins — your file is a decision someone made, and
+overriding it silently would be the wrong kind of helpful. The generated
+coexistence config is only the fallback when there is nothing to respect. If
+you write one by hand rather than generating it, expect <code>AL01</code> noise: sqlfluff
+defaults to requiring <code>AS</code> on table aliases, and sqlalign's default omits it.</p>
+<h2 id="the-settings-panel">The settings panel<a class="anchor" href="#the-settings-panel" aria-label="Link to this section">#</a></h2>
+<blockquote>
+<p><strong>The panel is experimental.</strong> It is useful and it is tested, but it is the
+one part of sqlalign not covered by any stability promise: its layout and
+behaviour may change without a major version. The CLI and the config file are
+the supported surface.</p>
+</blockquote>
+<p>Eighteen knobs is more than anyone wants to read about. <code>sqlalign --gui</code> opens a
+panel next to a live preview — every control re-runs the real engine on the text
+in the pane, so what you see is what the CLI would write:</p>
+<pre><code class="language-console">sqlalign --gui
+sqlalign --gui --dialect tsql
+</code></pre>
+<p>Left: dialect, preset, and every setting. Right: an editable input pane over the
+formatted result, with a status line counting statements and naming anything that
+declined. A setting that currently does nothing is greyed out rather than left
+sitting there inert — <code>…indent</code> only applies when the SELECT list is on its own
+line, <code>…river gutter</code> only when clause keywords are set to <code>river</code> — and the
+preset box drops to <code>(custom)</code> the moment your settings stop matching it.</p>
+<p><strong>Open SQL…</strong> (<code>⌘O</code>) loads a file, and the window is named for it from then on.
+<strong>Save formatted…</strong> (<code>⌘S</code>) defaults to that same file, so formatting one in place
+is the one-click path and matches what <code>sqlalign &lt;file&gt;</code> writes byte for byte;
+the dialog still asks before overwriting. <strong>Copy formatted</strong> is <code>⌘⇧C</code> rather than
+<code>⌘C</code>, which stays yours for ordinary copying.</p>
+<p><strong>Save config…</strong> writes a <code>.sqlalign.toml</code> — the same text <code>--show-config</code>
+prints — so the panel is a way to <em>find</em> a style, not a second place to keep
+one.</p>
+<p>It is Tkinter, from the standard library, so it needs no extra install. On Debian
+and Ubuntu that means <code>apt install python3-tk</code>; the flag says so if it is missing
+rather than failing with a traceback.</p>
+<h2 id="editors">Editors<a class="anchor" href="#editors" aria-label="Link to this section">#</a></h2>
+<p>sqlalign has no editor plugin. Two recipes cover most setups.</p>
+<p><strong>Format on save.</strong> Point any &quot;run a command on save&quot; extension at the file and
+let the editor reload it:</p>
+<pre><code class="language-sh">sqlalign &quot;$FILE&quot;
+</code></pre>
+<p><strong>Filter the buffer</strong> (vim, and anything with a <code>!</code> filter). sqlalign has no
+stdin mode, but it will read <code>/dev/stdin</code>:</p>
+<pre><code class="language-vim">:%!sqlalign --stdout /dev/stdin
+</code></pre>
+<p>That works, with one caveat: config discovery walks up from the <em>path you named</em>,
+and <code>/dev/stdin</code> is not in your repo, so a committed <code>.sqlalign.toml</code> is <strong>not</strong>
+picked up. Pass <code>--config</code> explicitly if you filter this way:</p>
+<pre><code class="language-vim">:%!sqlalign --stdout --config /path/to/.sqlalign.toml /dev/stdin
+</code></pre>
+<p>Formatting the real file (<code>:!sqlalign %</code> then <code>:e!</code>) has no such problem, and is
+the simpler choice inside a repo.</p>
+<h2 id="git-pre-commit-hook">Git pre-commit hook<a class="anchor" href="#git-pre-commit-hook" aria-label="Link to this section">#</a></h2>
+<p>Format staged SQL and re-stage what changed, so what you commit is always
+formatted:</p>
+<pre><code class="language-sh">#!/bin/sh
+# .githooks/pre-commit
+files=$(git diff --cached --name-only --diff-filter=ACM -- '*.sql')
+[ -z &quot;$files&quot; ] &amp;&amp; exit 0
+sqlalign $files || exit $?
+git add $files
+</code></pre>
+<pre><code class="language-sh">chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+</code></pre>
+<p>If you would rather <strong>reject</strong> an unformatted commit than fix it, swap the body
+for <code>sqlalign --check $files</code> and drop the <code>git add</code>.</p>
+<h2 id="ci">CI<a class="anchor" href="#ci" aria-label="Link to this section">#</a></h2>
+<p>One command, no wrapper needed. <code>--check</code> exits <code>1</code> when anything would change,
+which is exactly what a CI runner treats as a failure:</p>
+<pre><code class="language-sh">sqlalign --check .
+</code></pre>
+<p>Wrapped in a job step, with uv already on the runner:</p>
+<pre><code class="language-yaml">- name: Check SQL formatting
+  run: |
+    uv tool install .
+    sqlalign --check .
+</code></pre>
+<p>Use <code>--diff</code> instead of <code>--check</code> if you want the log to show what is wrong
+rather than only which files are:</p>
+<pre><code class="language-sh">sqlalign --diff .
+</code></pre>
+<p>Because sqlalign does not lint, it slots in beside a linter rather than replacing
+one — running <code>sqlfluff lint</code> in a neighbouring step is the intended setup.</p>
+<h2 id="exit-codes">Exit codes<a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success. Files were formatted, or <code>--check</code>/<code>--diff</code> found nothing to change. Statements that passed through untouched still exit <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>--check</code> or <code>--diff</code> found at least one file that would change. Only these two modes ever return <code>1</code>.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>A file could not be read, a config file is invalid, or an argument is invalid (an unsupported <code>--dialect</code>, an unknown <code>--align-targets</code> name, two output modes at once). Also an unexpected engine error on a single file.</td>
+</tr>
+</tbody>
+</table>
+<p>Exit <code>2</code> is per-file where it can be: an unreadable or misconfigured file is
+reported on stderr and skipped, and <strong>the rest of the run still processes</strong>. The
+final exit code is the worst one seen.</p>
+<pre><code class="language-sh">sqlalign nope.sql
+# sqlalign: [Errno 2] No such file or directory: 'nope.sql'
+# exit 2
+</code></pre>
+<h2 id="where-to-go-next">Where to go next<a class="anchor" href="#where-to-go-next" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>The full flag reference:</strong> <a href="cli.html"><code>cli.md</code></a> — every flag, its default, and
+which ones conflict.</li>
+<li><strong>Committing a team style:</strong> <a href="configuration.html"><code>configuration.md</code></a> — config
+file discovery, presets, and precedence.</li>
+<li><strong>What the output looks like, construct by construct:</strong> <a href="style.html"><code>style.md</code></a>.</li>
+<li><strong>The style itself, in the repo:</strong> <code>samples/queries.sql</code> is 25 hand-formatted
+goldens that the test suite asserts byte-for-byte. It is the executable spec.</li>
+<li><strong>Positioning, presets and the honest comparison against other formatters:</strong>
+the <a href="https://github.com/pua2/sqlalign/blob/main/README.md">README</a>.</li>
+<li><strong>Architecture, the alignment formula, the safety model:</strong>
+the <a href="architecture.html">Architecture</a> page.</li>
+</ul>
+</main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#install">Install</a><a class="lvl2" href="#your-first-format">Your first format</a><a class="lvl2" href="#look-before-you-write">Look before you write</a><a class="lvl2" href="#formatting-a-directory">Formatting a directory</a><a class="lvl3" href="#excluding-files">Excluding files</a><a class="lvl2" href="#skipping-one-statement">Skipping one statement</a><a class="lvl2" href="#when-sqlalign-declines">When sqlalign declines</a><a class="lvl2" href="#linting-inside-bodies">Linting inside $$ bodies</a><a class="lvl2" href="#running-sqlfluff-alongside-it">Running sqlfluff alongside it</a><a class="lvl3" href="#one-command-instead-of-two">One command instead of two</a><a class="lvl2" href="#the-settings-panel">The settings panel</a><a class="lvl2" href="#editors">Editors</a><a class="lvl2" href="#git-pre-commit-hook">Git pre-commit hook</a><a class="lvl2" href="#ci">CI</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#where-to-go-next">Where to go next</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

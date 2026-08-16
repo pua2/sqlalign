@@ -1,0 +1,75 @@
+[project]
+name = "sqlalign"
+version = "1.0.0"
+description = "A SQL formatter that cannot change what your SQL means"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Pavan Amin" }]
+keywords = ["sql", "formatter", "postgres", "redshift", "tsql", "plpgsql", "dbt"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: SQL",
+    "Topic :: Database",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Text Processing :: Filters",
+    "Typing :: Typed",
+]
+
+# sqlglot is pinned to the 30.14.x line: the layout and safety engine depends on
+# exact AST shapes (cast discriminators, TimeUnit unit-casing, dollar-quote
+# Heredoc bodies) verified against 30.14.0. sqlglot changes these across minors,
+# so a wider range would risk silent mis-layout. Bump deliberately, re-running
+# the full golden suite, never as a passive float.
+dependencies = ["sqlglot>=30.14,<30.15"]
+
+# sqlfluff is optional and imported only by --lint. sqlalign's own guarantee
+# does not depend on a linter, so neither should its install.
+[project.optional-dependencies]
+lint = ["sqlfluff>=4.2,<5"]
+
+[project.urls]
+Homepage = "https://pua2.github.io/sqlalign/"
+Documentation = "https://pua2.github.io/sqlalign/v1/"
+Source = "https://github.com/pua2/sqlalign"
+Issues = "https://github.com/pua2/sqlalign/issues"
+
+[project.scripts]
+sqlalign = "sqlalign.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.16.2",
+    "sqlfluff>=4.2,<5",
+    # Docs only. The site is GENERATED and committed, so nothing at runtime or
+    # on GitHub Pages needs this --  is the only consumer.
+    "markdown-it-py>=3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E,F  pyflakes + pycodestyle errors   I  import order      UP  pyupgrade
+# B    bugbear (real bug shapes)       C4 comprehensions    SIM simplification
+# RUF  ruff-specific
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+# The docstrings are prose and deliberately use en/em dashes; RUF001-003 would
+# have us mangle punctuation for no benefit.
+ignore = ["RUF001", "RUF002", "RUF003"]

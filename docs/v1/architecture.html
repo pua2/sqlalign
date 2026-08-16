@@ -1,0 +1,847 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — sqlalign docs</title>
+<meta name="description" content="Architecture — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html">Settings reference</a>
+<a href="style.html">The house style</a>
+<a href="cli.html">CLI reference</a>
+<a href="dialects.html">Dialects</a>
+<a href="architecture.html" class='here'>Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><p>Read this page to understand why sqlalign's output looks the way it does, where to
+add support for a construct it declines, and — precisely — how far its semantic
+guarantee reaches and where it stops.</p>
+<p>Two ideas explain almost everything else on this page:</p>
+<ol>
+<li><strong>Layout and alignment are separate passes.</strong> Handlers decide what goes on
+which line without knowing any final column; a second, deterministic pass
+resolves the columns and pads. That is why alignment composes with line
+wrapping instead of fighting it.</li>
+<li><strong>Declining is a first-class result.</strong> Anything the engine cannot reproduce
+exactly — an unmodelled construct, a render that would change meaning, an
+outright bug — degrades to a byte-identical passthrough with a warning. The
+file is never mangled.</li>
+</ol>
+<h2 id="the-pipeline">The pipeline<a class="anchor" href="#the-pipeline" aria-label="Link to this section">#</a></h2>
+<p>A file goes through this. The masking and the splitting happen once; everything
+between them happens once per statement:</p>
+<pre><code>source text
+  │
+  ├─ mask Jinja/dbt expressions       templating.py   (same-width placeholders)
+  ├─ split into statements            splitter.py     (lossless; parts rejoin byte-for-byte)
+  │
+  └─ for each statement:
+       ├─ parse                       sqlglot.parse   (postgres | redshift | tsql)
+       ├─ recover comments            layout/comments.py
+       ├─ lay out to a Line/Seg IR    layout/*.py     (line breaks + indents fixed here)
+       ├─ move separator commas       commas.py       (IR transform)
+       ├─ drop disabled align targets align.py
+       ├─ resolve columns and render  align.py        (fixpoint, then pad)
+       ├─ apply keyword case          keywordcase.py  (AST-driven, only when `lower`)
+       └─ re-parse and AST-compare    formatter.ast_equal
+                                        │
+                                        ├─ equal    → keep the formatted text
+                                        └─ differs  → keep the ORIGINAL bytes + warn
+  │
+  ├─ rejoin statements                formatter._join_statements
+  ├─ restore the template expressions  templating.py
+  └─ restore line endings, write       cli.py
+</code></pre>
+<p>The safety check compares the <strong>masked</strong> input against the <strong>masked</strong> output, not
+the raw text — raw templated SQL does not parse, so there would be nothing to
+compare. Because the mask is a bijection over the same character positions,
+equality of the masked forms is equality of the originals.</p>
+<p>The modules:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cli.py</code></td>
+<td>argparse, file/directory expansion and excludes, line endings, writing, exit codes</td>
+</tr>
+<tr>
+<td><code>configfile.py</code></td>
+<td><code>.sqlalign.toml</code> / <code>[tool.sqlalign]</code> discovery, precedence, strict unknown-key checking</td>
+</tr>
+<tr>
+<td><code>style.py</code></td>
+<td>the <code>Style</code> dataclass (every knob), presets, <code>ALIGN_TARGETS</code>, <code>SUPPORTED_DIALECTS</code></td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td><code>Width</code> — the <code>width</code> / <code>grace</code> / <code>floor</code> triple and the effective break limit</td>
+</tr>
+<tr>
+<td><code>splitter.py</code></td>
+<td>cuts a file into statements; string-, comment-, dollar-quote- and <code>GO</code>-aware</td>
+</tr>
+<tr>
+<td><code>formatter.py</code></td>
+<td>orchestration, the AST safety check, the decline handling, inter-statement blank lines</td>
+</tr>
+<tr>
+<td><code>templating.py</code></td>
+<td>masks <code>{{ }}</code> / <code>{% %}</code> / <code>{# #}</code> with same-width placeholders</td>
+</tr>
+<tr>
+<td><code>plpgsql.py</code></td>
+<td>dollar-quoted body scanning, body statement splitting, plpgsql skeleton layout</td>
+</tr>
+<tr>
+<td><code>layout/</code></td>
+<td>one module per node family (select, fromjoin, conditions, case, window, cte, subquery, setop, dml, ddl, expr, grouporder) plus the comment engine</td>
+</tr>
+<tr>
+<td><code>ir.py</code></td>
+<td><code>Seg</code>, <code>Line</code>, and the set of right-aligned kinds</td>
+</tr>
+<tr>
+<td><code>commas.py</code></td>
+<td>comma position, applied to the IR</td>
+</tr>
+<tr>
+<td><code>align.py</code></td>
+<td>align-target filtering, the fixpoint column resolver, and <code>render</code></td>
+</tr>
+<tr>
+<td><code>casing.py</code></td>
+<td><code>render_expr</code> and the ambient render style (<code>neq_style</code>, <code>decimal_style</code>)</td>
+</tr>
+<tr>
+<td><code>keywordcase.py</code></td>
+<td>the <code>lower</code> keyword pass, driven by the parse tree rather than a word list</td>
+</tr>
+</tbody>
+</table>
+<h2 id="layout-and-alignment-are-two-passes">Layout and alignment are two passes<a class="anchor" href="#layout-and-alignment-are-two-passes" aria-label="Link to this section">#</a></h2>
+<p>The IR is deliberately small. A <code>Line</code> has an indent and a list of <code>Seg</code>s; a <code>Seg</code>
+is text plus an optional <code>(scope, kind)</code> tag:</p>
+<pre><code class="language-python">@dataclass
+class Seg:
+    text: str
+    scope: str | None = None
+    kind: str | None = None    # item|op|alias|on|as|type|constraint|then
+</code></pre>
+<p>A layout handler emits lines and tags. It never counts spaces and never asks where
+a column will land. <code>align.py</code> owns all column math.</p>
+<p>That split is what makes the columnar style tractable. Consider what a handler
+would otherwise have to know:</p>
+<pre><code class="language-sql">FROM customers               cust
+INNER JOIN orders            ord        ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr       ON addr.order_id       = ord.order_id
+                                       AND addr.address_type   = 'shipping'
+</code></pre>
+<p>The alias column is set by the longest table reference (<code>LEFT JOIN shipping_addresses</code>, row 4). The <code>ON</code> column is set by the longest <em>alias</em>
+(<code>line_items</code>, row 3) — a different row. The operator column is set by row 3
+again, but only <em>after</em> every <code>ON</code> has been pushed right. Three columns, three
+different driving rows, and each depends on the resolution of the one before it.
+No handler emitting row 1 could know any of that.</p>
+<h3 id="alignment-composes-with-wrapping-because-it-runs-second">Alignment composes with wrapping because it runs second<a class="anchor" href="#alignment-composes-with-wrapping-because-it-runs-second" aria-label="Link to this section">#</a></h3>
+<p>Line breaking happens in the layout pass, against the width limit, before any
+padding exists. Alignment then pads whatever lines came out. So a wrapped item
+still participates in its column:</p>
+<pre><code class="language-sql">SELECT customer_id
+     , order_id
+     , order_date
+     , total
+     , ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS rn
+     , SUM(total) OVER (PARTITION BY customer_id ORDER BY order_date
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)    AS running_total
+     , LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date)   AS prev_order_date
+FROM orders;
+</code></pre>
+<p>The second window function wrapped inside its <code>OVER (...)</code>. Its <code>AS</code> still lands
+in the same column as the two unwrapped siblings, because the <code>AS</code> column is
+resolved over the <em>rendered lines</em>, and the last line of a wrapped item is just
+another line.</p>
+<p>The ordering is one-way on purpose: breaking runs before
+alignment, and alignment is never sacrificed to fit the width limit. Padding that
+pushes a line past the limit is accepted rather than fed back into the breaker.
+Feeding it back is what makes an aligning formatter oscillate — pad, overflow,
+break, un-pad, fit, pad again.</p>
+<p>The width limit itself is a soft target, computed per construct:</p>
+<pre><code class="language-python">def limit(self, anchor: int) -&gt; int:
+    return max(self.width, anchor + self.floor) + self.grace
+</code></pre>
+<p>with <code>width=100</code>, <code>grace=5</code>, <code>floor=60</code> by default. A construct anchored deep in a
+subquery still gets 60 columns of working room, and nothing breaks over five
+columns of overshoot.</p>
+<h3 id="the-second-pass-is-genuinely-separable">The second pass is genuinely separable<a class="anchor" href="#the-second-pass-is-genuinely-separable" aria-label="Link to this section">#</a></h3>
+<p>Because padding is the only thing the alignment pass adds, switching it off leaves
+the line structure untouched. Same input, <code>--no-align</code>:</p>
+<pre><code class="language-sql">SELECT cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+FROM customers cust
+INNER JOIN orders ord ON ord.customer_id = cust.customer_id
+LEFT JOIN order_line_items line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
+  AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment = 'enterprise';
+</code></pre>
+<p>Every line break is where it was. <code>render(lines, align=False)</code> skips column
+resolution entirely and joins segments with one space; the continuation <code>AND</code> falls
+back to its layout indent because there is no longer an <code>ON</code> column to justify
+against. <code>--align-targets</code> is the same mechanism at finer grain: a disabled target
+has its <code>scope</code> and <code>kind</code> cleared, so the resolver simply never sees it and that
+one column collapses to single spaces. There is no separate unaligned code path
+that could drift from the aligned one.</p>
+<p>The same reasoning drives <code>--comma-position</code>. Moving a separator comma is an IR
+transform — each comma is its own tagged segment — not a rewrite over printed
+text. A text pass cannot reliably tell a separator comma from the comma in
+<code>NUMERIC(10, 2)</code>, and it cannot know which physical line ends a multi-line item.
+Doing it on the IR also means alignment resolves against the final segment text
+rather than against text that is about to move.</p>
+<h2 id="the-fixpoint-resolver">The fixpoint resolver<a class="anchor" href="#the-fixpoint-resolver" aria-label="Link to this section">#</a></h2>
+<p>Column resolution is not a single left-to-right sweep. It cannot be: a tagged
+segment's position depends on the resolved targets of the tagged segments to its
+left on the same line, and those targets may be driven by a different row.</p>
+<p><code>_resolve_targets</code> iterates instead. Each sweep replays the emit pass using the
+previous sweep's targets — when the running column reaches a tagged segment it is
+placed at <code>max(natural_position, target_so_far)</code> and the cursor advances past the
+<em>placed</em> position, not the natural one. Targets only ever increase, and they are
+bounded by total line length, so the iteration terminates; it stops as soon as a
+full sweep changes nothing.</p>
+<p>Two properties are worth knowing if you are reading <code>align.py</code>:</p>
+<ul>
+<li><strong>The first sweep is the naive resolver.</strong> It starts from all-zero targets, so
+every <code>max(natural, 0)</code> is just <code>natural</code>. Any scope with at most one tagged
+column per line fixes in one sweep, at exactly the columns a single-pass
+resolver would produce.</li>
+<li><strong>Later sweeps can only raise a column.</strong> They cannot lower one or move it
+sideways, so the iteration can correct an under-computed column but cannot
+invent a different layout.</li>
+</ul>
+<p>Right-aligned kinds (<code>op</code>, <code>on</code>) are resolved by their <em>end</em> column; everything
+else by its start. That is what puts <code>=</code> and <code>&gt;=</code> in one column with their
+operands ragged on the left:</p>
+<pre><code class="language-sql">WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<h2 id="the-safety-model">The safety model<a class="anchor" href="#the-safety-model" aria-label="Link to this section">#</a></h2>
+<p>After a statement is rendered, sqlalign parses the output again and compares its
+AST to the input's. If they differ, the <strong>original bytes</strong> are kept and a warning
+goes to stderr. This is per statement: one statement declining does not stop the
+rest of the file from formatting.</p>
+<p>The comparison is not raw <code>==</code> on trees. <code>_normalize</code> first walks both sides and
+neutralises differences that cannot carry meaning:</p>
+<table>
+<thead>
+<tr>
+<th>Normalisation</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>comments = None</code> on every node</td>
+<td>a comment cannot change meaning</td>
+</tr>
+<tr>
+<td><code>LANGUAGE plpgsql</code> vs <code>LANGUAGE 'plpgsql'</code></td>
+<td>optional legacy quoting; parses to <code>Var</code> vs <code>Literal</code></td>
+</tr>
+<tr>
+<td>casefold <code>WindowSpec.kind</code> / <code>start_side</code> / <code>end_side</code>, <code>TruncateTable.identity</code> / <code>option</code></td>
+<td>plain strings holding source-cased <em>keywords</em></td>
+</tr>
+<tr>
+<td>casefold <code>DistStyleProperty</code>'s <code>Var</code></td>
+<td>a closed keyword set (<code>KEY</code>/<code>EVEN</code>/<code>ALL</code>/<code>AUTO</code>), not user data</td>
+</tr>
+<tr>
+<td>casefold <code>Command</code> text <em>outside quotes</em></td>
+<td>half-parsed raw source; quoted identifiers and string literals keep their case</td>
+</tr>
+</tbody>
+</table>
+<p>The exclusions are as deliberate as the inclusions. A bare <code>exp.Var</code> is <strong>not</strong>
+casefolded globally, because <code>SET search_path = &quot;MySchema&quot;</code> parses to
+<code>Var(this=&quot;MySchema&quot;)</code> with the quotes already stripped — folding all <code>Var.this</code>
+would make a real, meaning-changing case edit invisible.</p>
+<p>Two constructs get a structural comparison instead of a whole-text one:</p>
+<ul>
+<li><strong>Dollar-quoted bodies.</strong> sqlglot sees <code>$$ … $$</code> as one opaque string, so a raw
+AST comparison would reject <em>any</em> body reformatting. Header and tail are
+compared as an AST (an empty-body <code>CREATE</code> that parses); the body is split into
+clauses; each embedded SQL statement is compared as an AST; skeleton statements
+(<code>DECLARE</code>, <code>BEGIN</code>, <code>IF … THEN</code>) are compared whitespace- and
+case-insensitively.</li>
+<li><strong>T-SQL <code>GO</code> batches.</strong> <code>GO</code> is a client directive, not SQL, and sqlglot
+swallows the statement after it into a string literal — so a whole-file parse
+compares nonsense. The file is split at <code>GO</code> lines, each batch compared
+separately, and the separators themselves compared so a dropped or added <code>GO</code>
+is still caught.</li>
+</ul>
+<h3 id="what-the-guarantee-does-not-cover">What the guarantee does not cover<a class="anchor" href="#what-the-guarantee-does-not-cover" aria-label="Link to this section">#</a></h3>
+<p>Three limits. All three are real, and none of them can be closed by a better AST
+comparison.</p>
+<p><strong>1. It is a within-dialect guarantee.</strong> <code>SUPPORTED_DIALECTS</code> is a whitelist of
+<code>postgres</code>, <code>redshift</code> and <code>tsql</code>, and it is not a list of dialects sqlglot can
+parse — sqlglot parses many more. It is the list whose <em>emitted keywords</em> have
+been audited. The failure mode this guards against actually shipped once: sqlglot
+parses T-SQL <code>SELECT TOP 10</code> into the same <code>Limit</code> node Postgres uses; a
+dialect-agnostic handler emitted its hard-coded <code>LIMIT</code>; sqlglot then parsed that
+<code>LIMIT</code> back as T-SQL too, so <code>ast_equal</code> compared <em>equal</em> and the statement went
+out as <code>SELECT id … LIMIT 10</code>, which SQL Server rejects outright. Valid SQL in,
+broken SQL out, no warning. The AST net cannot see this, because the round trip
+never leaves sqlglot's more permissive grammar. <code>format_sql</code> therefore raises a
+<code>ValueError</code> for any dialect outside the whitelist rather than producing output,
+and extending the list means auditing every keyword the handlers emit — two of
+them diverge for T-SQL — not just registering a parser.</p>
+<p><strong>2. Comments are excluded from <code>ast_equal</code>.</strong> Stripping them is correct for
+semantics and unavoidable in practice, but it means a dropped, restyled
+(<code>--</code> → <code>/* */</code>), or relocated comment is <strong>silent</strong> as far as the safety net is
+concerned. The byte-exact golden fixtures are the only guard on comment handling.
+That is precisely why <code>layout/comments.py</code> recovers each comment's original style
+and text from the raw source and re-attaches it by authorial position, and why it
+raises <code>Unsupported</code> for any comment position it does not model instead of
+emitting a best-effort guess. &quot;Reproduce faithfully or decline&quot; is the contract;
+&quot;try our best&quot; would be unverifiable.</p>
+<p><strong>3. Some distinctions are destroyed before the comparison exists.</strong> When
+sqlglot's parser collapses two spellings into one node, both sides of the
+comparison collapse identically and the difference is invisible. Where the two
+spellings are true synonyms this is harmless, and sqlalign simply picks one:
+<code>!=</code> / <code>&lt;&gt;</code> and <code>NUMERIC</code> / <code>DECIMAL</code> are the only two places it chooses for you,
+and both are configurable. Where they are <em>not</em> synonyms, the AST is useless and
+the only defence is the raw source: T-SQL <code>REAL</code> (FLOAT(24)) and <code>FLOAT</code>
+(FLOAT(53)) collapse to one node, as do <code>NTEXT</code> (Unicode) and <code>TEXT</code>, so a
+statement containing <code>REAL</code> or <code>NTEXT</code> under <code>--dialect tsql</code> is declined on sight
+by a regex over the input text.</p>
+<p>Where the collapse <em>is</em> visible, the net does its job. Redshift <code>TEXT</code> renders as
+<code>VARCHAR(MAX)</code> through sqlglot, which widens the column from 256 to 65535 — but
+those parse to different nodes, so:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect redshift table.sql
+sqlalign: table.sql: sqlglot cannot round-trip this statement, passed through unformatted: create table t (a text not null, b int);
+create table t (a text not null, b int);
+</code></pre>
+<h2 id="the-decline-contract">The decline contract<a class="anchor" href="#the-decline-contract" aria-label="Link to this section">#</a></h2>
+<p>Everything above funnels into one behaviour: <strong>when in doubt, emit the input
+bytes and say so.</strong></p>
+<p><code>formatter._format_all</code> wraps layout, render and the safety check per statement,
+and every failure class degrades to the same passthrough with a differently worded
+warning, so an expected decline is distinguishable from a bug in stderr:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Warning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sqlglot cannot parse the statement</td>
+<td><code>passthrough (parse error line N): …</code></td>
+</tr>
+<tr>
+<td>a layout handler raised <code>Unsupported</code></td>
+<td><code>unsupported construct, passed through: …</code></td>
+</tr>
+<tr>
+<td>the output would not AST-compare equal</td>
+<td><code>formatting would change semantics, passed through unformatted: …</code> — <strong>a bug report</strong>, not a decline: the renderer emitted something that means a different thing</td>
+</tr>
+<tr>
+<td>…and sqlglot cannot round-trip the input either</td>
+<td><code>sqlglot cannot round-trip this statement, passed through unformatted: …</code> — the fault is upstream, so no formatter built on sqlglot could satisfy the check</td>
+</tr>
+<tr>
+<td>any other exception</td>
+<td><code>internal formatter error, passed through (please report): …</code></td>
+</tr>
+</tbody>
+</table>
+<p>One decline is file-wide rather than per statement: a template expression too
+short to hold a same-width placeholder (<code>{{x}}</code>) fails before splitting, so the
+whole file passes through with <code>templating not maskable, passed through: …</code>. It
+has to be — masking runs over the file, not over one statement.</p>
+<p>Otherwise declining is per statement, not per file:</p>
+<pre><code class="language-console">$ sqlalign --stdout mixed.sql
+sqlalign: mixed.sql: unsupported construct, passed through: -- a decline next to a formatted stateme
+-- a decline next to a formatted statement
+select distinct on (a) a, b from t;
+SELECT x
+     , y
+FROM z
+WHERE a  = 1
+  AND bb = 2;
+</code></pre>
+<p>Exit code <code>0</code>. A construct sqlalign does not model is not an error — the file is
+still correct SQL, byte-for-byte where it was not understood and formatted
+everywhere else.</p>
+<h3 id="why-this-is-the-product-not-a-limitation">Why this is the product, not a limitation<a class="anchor" href="#why-this-is-the-product-not-a-limitation" aria-label="Link to this section">#</a></h3>
+<p>A formatter that reformats what it half-understands is worse than one that
+declines, because you cannot tell the two apart by reading the diff. Every
+declined statement is <em>visibly</em> unchanged and <em>audibly</em> reported, so the coverage
+gap is legible; a wrong render is not.</p>
+<p>The contract is enforced structurally rather than by discipline. <code>layout_statement</code>
+raises <code>Unsupported</code> for any node type it does not dispatch, so a new construct
+declines by default until someone writes its handler. Within a handler,
+<code>guard_args</code> declines a node carrying any argument the handler does not read:</p>
+<pre><code class="language-python">for name, value in node.args.items():
+    if value not in (None, [], False) and name not in allowed:
+        raise Unsupported(f&quot;{label or type(node).__name__} arg: {name}&quot;)
+</code></pre>
+<p>Without that, an <code>INSERT … ON CONFLICT</code> or an unread <code>CREATE TABLE</code> option would
+be silently <em>dropped</em> from the output — a change the AST comparison would catch,
+but only after the handler had already produced wrong text. Declining at the arg
+level makes it a passthrough instead of a near miss.</p>
+<p>The same rule governs the edges of the pipeline. The splitter is lossless — its
+parts concatenate back to the input byte for byte — specifically so a declined
+statement can be emitted from its part verbatim. Template masking uses same-width
+placeholders and declines an expression too short to hold one (<code>{{x}}</code>), rather
+than approximating a width and shifting every column in the file. A file with lone
+<code>CR</code> line endings, which sqlalign does not model, passes through untouched with a
+warning instead of being silently rewritten.</p>
+<p>Two escape hatches exist for SQL that parses fine but that you want left alone:
+<code>-- sqlalign: skip</code> on the line above a statement passes exactly that statement
+through, with no parse, no layout and deliberately no warning; <code>--no-format-bodies</code>
+does the same for every dollar-quoted procedure body.</p>
+<pre><code class="language-console">$ sqlalign --stdout skip.sql
+-- sqlalign: skip
+select   a,b   from t where x=1;
+SELECT a
+     , b
+FROM t
+WHERE x = 1;
+</code></pre>
+<h2 id="testing">Testing<a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2>
+<p>The design spec describes the style; the fixtures are what the suite actually
+enforces. Treat them as the executable specification — grow them, never weaken
+them.</p>
+<p><strong>29 byte-exact golden pairs</strong> live in <code>tests/fixtures/input/NN.sql</code> and
+<code>tests/fixtures/expected/NN.sql</code>, generated from the 29 hand-formatted samples in
+<code>samples/queries.sql</code> (24 postgres, one redshift, four T-SQL). Every pair is
+asserted three ways:</p>
+<table>
+<thead>
+<tr>
+<th>Assertion</th>
+<th>What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format(input) == expected</code>, byte for byte</td>
+<td>any layout regression at all</td>
+</tr>
+<tr>
+<td><code>format(expected) == expected</code></td>
+<td>a rule that keeps nudging a line every pass — invisible to a one-pass test</td>
+</tr>
+<tr>
+<td>input and output parse to equal ASTs</td>
+<td>the runtime safety net's own check, run over the corpus</td>
+</tr>
+</tbody>
+</table>
+<p>A <strong>sqlfluff gate</strong> lints every standard-SQL Postgres expected fixture against the
+repo's <code>.sqlfluff</code>, with three rules excluded and each exclusion documented in
+that file (the house style preserves <code>GROUP BY</code> reference form, does not force
+aliases, and keeps <code>::</code> vs <code>CAST(...)</code> as written). The Redshift, T-SQL and
+plpgsql fixtures sit outside the gate — dialect and linter-model limits, each
+noted in <code>tests/test_sqlfluff_gate.py</code>.</p>
+<p>Goldens pin the <strong>default</strong> style. They cannot pin the knobs: enumerating knob
+combinations byte-for-byte would need one fixture per combination, which is how
+&quot;just add more options&quot; rots a formatter. <code>tests/test_knob_combinations.py</code>
+asserts <strong>invariants across combinations</strong> instead, drawn from a fixed seed so a
+failure reproduces. For every sample and every sampled combination:</p>
+<ol>
+<li>semantics never change (<code>ast_equal(input, output)</code>),</li>
+<li>the output is idempotent,</li>
+<li>the output re-parses,</li>
+<li>no line has trailing whitespace,</li>
+<li>the token stream is identical to the house rendering — layout knobs move
+tokens, they never add, drop, or reorder them.</li>
+</ol>
+<p>Two of those tests guard the test, which is worth copying: one asserts the sampled
+combinations actually produce <em>different</em> output (a property suite that exercises
+one behaviour ten times proves nothing), and one asserts invariant 5 <strong>fails</strong>
+when tokens are dropped or reordered (an invariant that cannot fail is
+indistinguishable from one that passes). A third pins that the defaults still
+reproduce every golden, so adding a knob cannot quietly change what sqlalign does
+when nobody configures it.</p>
+<p>Below that sit unit tests for the alignment formula, the fixpoint composition
+cases, the splitter, the dollar-quote scanner, comments, config precedence, file
+selection, line endings, and each individual knob. Run the lot with:</p>
+<pre><code class="language-sh">PYTHONPATH=src pytest -q
+</code></pre>
+<h2 id="adding-a-construct">Adding a construct<a class="anchor" href="#adding-a-construct" aria-label="Link to this section">#</a></h2>
+<ol>
+<li>Write the golden first. Add the hand-formatted statement to
+<code>samples/queries.sql</code> under a new <code>-- #N: description</code> header, regenerate with
+<code>python scripts/build_fixtures.py samples/queries.sql tests/fixtures/expected</code>
+(it writes zero-padded <code>NN.sql</code>), and add the messy
+<code>tests/fixtures/input/NN.sql</code>.</li>
+<li>Run <code>PYTHONPATH=src pytest -q</code>. A new golden that fails is either a real gap in
+a layout handler or an unmodelled construct — in the second case confirm you
+get the <em>warning and a passthrough</em>, not a wrong render.</li>
+<li>Emit tags, never spaces. A handler adds <code>Seg(text, scope, kind)</code>; if you find
+yourself computing a column width in <code>layout/</code>, the logic belongs in
+<code>align.py</code>.</li>
+<li>Read every layout literal from <code>Style</code>. Handlers do not hard-code widths,
+indents, or spellings.</li>
+<li>Widen <code>guard_args</code> only for arguments you actually render.</li>
+<li>If the new output should lint clean, check the sqlfluff gate still passes, or
+document a new exclusion in <code>.sqlfluff</code> with a comment explaining it.</li>
+</ol>
+<h2 id="see-also">See also<a class="anchor" href="#see-also" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="dialects.html">Dialects</a> — what each of the three dialects covers, and the
+keyword audit behind the whitelist.</li>
+<li><a href="style.html">The house style</a> — the output this engine produces, construct by
+construct.</li>
+<li><a href="faq.html">FAQ</a> — the user-facing version of the decline contract: why a
+statement was passed through, and what to do about it.</li>
+<li><strong>Style reference</strong> — <code>samples/queries.sql</code>: the hand-formatted goldens that
+define the house style, and the only place it is defined byte-for-byte.</li>
+</ul>
+</main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#the-pipeline">The pipeline</a><a class="lvl2" href="#layout-and-alignment-are-two-passes">Layout and alignment are two passes</a><a class="lvl3" href="#alignment-composes-with-wrapping-because-it-runs-second">Alignment composes with wrapping because it runs second</a><a class="lvl3" href="#the-second-pass-is-genuinely-separable">The second pass is genuinely separable</a><a class="lvl2" href="#the-fixpoint-resolver">The fixpoint resolver</a><a class="lvl2" href="#the-safety-model">The safety model</a><a class="lvl3" href="#what-the-guarantee-does-not-cover">What the guarantee does not cover</a><a class="lvl2" href="#the-decline-contract">The decline contract</a><a class="lvl3" href="#why-this-is-the-product-not-a-limitation">Why this is the product, not a limitation</a><a class="lvl2" href="#testing">Testing</a><a class="lvl2" href="#adding-a-construct">Adding a construct</a><a class="lvl2" href="#see-also">See also</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

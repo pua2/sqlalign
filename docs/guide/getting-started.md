@@ -1,0 +1,542 @@
+# Getting started
+
+This page takes you from nothing installed to sqlalign running over a whole
+repository and gating your CI.
+
+sqlalign formats **presentation only**. Every statement it touches is re-parsed
+and AST-compared against your input; if the output would mean anything different
+— or if the engine does not fully model the construct — that statement is passed
+through **byte-identical** with a warning instead. It does not lint, and it will
+not rewrite your SQL for you.
+
+## Install
+
+sqlalign needs **Python 3.12 or newer** and has exactly one runtime dependency:
+`sqlglot`, pinned to the `30.14.x` line. (The layout engine reads exact AST
+shapes, so the pin is deliberate — see the comment in `pyproject.toml`.)
+
+```sh
+uv tool install .
+```
+
+That installs a `sqlalign` command on your PATH. Check it:
+
+```sh
+sqlalign --help
+```
+
+For development on sqlalign itself, work from the repo venv instead — this adds
+the dev tools (`pytest`, `ruff`, `sqlfluff`):
+
+```sh
+uv sync
+```
+
+## Your first format
+
+Save this as `revenue.sql`:
+
+```sql
+select c.customer_id, c.email, sum(o.total) as lifetime_value, count(*) as order_count
+from customers c join orders o on o.customer_id = c.customer_id
+where o.status = 'complete' and o.order_date >= '2026-01-01'
+group by c.customer_id, c.email
+having sum(o.total) > 500
+order by lifetime_value desc;
+```
+
+Print the formatted result without touching the file:
+
+```sh
+sqlalign --stdout revenue.sql
+```
+
+```sql
+SELECT c.customer_id
+     , c.email
+     , SUM(o.total) AS lifetime_value
+     , COUNT(*)     AS order_count
+FROM customers c
+JOIN orders    o ON o.customer_id = c.customer_id
+WHERE o.status      = 'complete'
+  AND o.order_date >= '2026-01-01'
+GROUP BY c.customer_id
+       , c.email
+HAVING SUM(o.total) > 500
+ORDER BY lifetime_value DESC;
+```
+
+The `AS` clauses, the operators in `WHERE`, and the table aliases in the `FROM`
+block are each padded into a column. That is the house style; it is a fixpoint
+resolver pass, not a search-and-replace over printed text, so it composes with
+line wrapping instead of fighting it.
+
+Now rewrite the file for real. In-place is the default — no flag:
+
+```sh
+sqlalign revenue.sql
+```
+
+It prints nothing on success. Run it again and nothing changes: formatting is
+idempotent, and the golden test suite asserts that.
+
+## Look before you write
+
+Three flags control where the output goes. They are **mutually exclusive** — pass
+at most one.
+
+| Flag | Writes the file? | Prints | Exit code |
+|---|---|---|---|
+| *(none)* | yes | nothing | `0` |
+| `--stdout` | no | the formatted SQL | `0` |
+| `--check` | no | `would reformat <path>` per file | `1` if any file would change |
+| `--diff` | no | a unified diff per file | `1` if any file would change |
+
+`--check` is for CI logs you want to stay readable; `--diff` is for when you want
+to see the change itself:
+
+```sh
+sqlalign --diff revenue.sql
+```
+
+```diff
+--- revenue.sql
++++ revenue.sql (formatted)
+@@ -1,6 +1,12 @@
+-select c.customer_id, c.email, sum(o.total) as lifetime_value, count(*) as order_count
+-from customers c join orders o on o.customer_id = c.customer_id
+-where o.status = 'complete' and o.order_date >= '2026-01-01'
+-group by c.customer_id, c.email
+-having sum(o.total) > 500
+-order by lifetime_value desc;
++SELECT c.customer_id
++     , c.email
++     , SUM(o.total) AS lifetime_value
++     , COUNT(*)     AS order_count
++FROM customers c
++JOIN orders    o ON o.customer_id = c.customer_id
++WHERE o.status      = 'complete'
++  AND o.order_date >= '2026-01-01'
++GROUP BY c.customer_id
++       , c.email
++HAVING SUM(o.total) > 500
++ORDER BY lifetime_value DESC;
+```
+
+## Formatting a directory
+
+Pass a directory and sqlalign walks it recursively for `*.sql`, in sorted order
+so a run is reproducible:
+
+```sh
+sqlalign --check .
+```
+
+```
+would reformat models/gen_out.gen.sql
+would reformat models/marts/rollup.sql
+would reformat models/users.sql
+would reformat vendor/legacy.sql
+```
+
+### Excluding files
+
+Generated SQL and vendored SQL usually should not be reformatted. `--exclude`
+takes a glob and is repeatable:
+
+```sh
+sqlalign --check --exclude 'vendor/*' --exclude '*.gen.sql' .
+```
+
+```
+would reformat models/marts/rollup.sql
+would reformat models/users.sql
+```
+
+Two things to know:
+
+- Patterns are matched against each file's path **relative to the directory you
+  named**, and also against its bare filename — so `vendor/*` and `*.gen.sql`
+  both work above.
+- **A file you name explicitly on the command line is never excluded.** Asking
+  for it by name is a clearer signal than a pattern in a config file:
+
+  ```sh
+  sqlalign --check --exclude 'vendor/*' vendor/legacy.sql
+  # would reformat vendor/legacy.sql
+  ```
+
+Once the patterns are right, drop `--check` to actually write:
+
+```sh
+sqlalign --exclude 'vendor/*' --exclude '*.gen.sql' .
+```
+
+Rather than repeat those flags forever, commit them. sqlalign reads a
+`.sqlalign.toml` (or a `[tool.sqlalign]` table in `pyproject.toml`) discovered by
+walking up from each file:
+
+```toml
+# .sqlalign.toml
+exclude = ["vendor/*", "*.gen.sql"]
+```
+
+Run `sqlalign --show-config <path>` at any point to print the settings that would
+actually apply, as TOML, with the config file they came from on the first line.
+
+## Skipping one statement
+
+Put `-- sqlalign: skip` on the line above a statement and that statement passes
+through byte-identical. Its neighbours still format:
+
+```sql
+-- sqlalign: skip
+select   a,b    from t;
+select c, d from u;
+```
+
+```sh
+sqlalign --stdout skip.sql
+```
+
+```sql
+-- sqlalign: skip
+select   a,b    from t;
+SELECT c
+     , d
+FROM u;
+```
+
+## When sqlalign declines
+
+sqlalign would rather leave your SQL alone than render it wrong. A statement it
+cannot reproduce exactly is emitted unchanged, with a warning on **stderr**:
+
+```sh
+sqlalign --stdout passthru.sql
+```
+
+```
+sqlalign: passthru.sql: unsupported construct (Pivot), passed through: select * from t pivot (sum(x) for y in (
+```
+
+```sql
+select * from t pivot (sum(x) for y in (1, 2)) p;
+```
+
+Unparseable input behaves the same way rather than blowing up the run:
+
+```
+sqlalign: broken.sql: passthrough (parse error line 1): this is not sql at all ((( ;
+```
+
+There is a second kind of message, and it means something different:
+
+```
+sqlalign: q.sql: formatting would change semantics, passed through unformatted: ...
+```
+
+That one is a **bug report**, not a decline. It means sqlalign rendered the
+statement, read its own output back, and found it no longer meant the same
+thing — so it threw the output away. The construct is not unsupported; the
+renderer is wrong. Two shipped that way and both were found by accident (every
+lowercase user-defined function, and every quoted column alias), so the test
+suite now sweeps for that wording specifically. If you see it, it is worth
+reporting.
+
+**A passthrough is not a failure.** Both of those runs exit `0` — the file is
+valid output, just unformatted.
+
+That is safe but invisible: a CI run stays green with any fraction of a
+repository unformatted, and nothing tells you which fraction. `--report`
+counts it:
+
+```console
+$ sqlalign --report --check models/
+  1,204 statements   1,151 formatted (95.6%)   53 declined
+
+  declined by cause
+      38  unsupported  Pivot
+      12  unsupported  Subquery
+       3  parse        parse error
+```
+
+`--max-declines N` turns that into a gate — exit `1` if more than N statements
+were passed through. Start it at whatever your repository reports today and
+ratchet it down; it stops new unformattable SQL arriving unnoticed.
+
+The causes are ranked, so the list doubles as a priority order for what to
+implement next — measured on your SQL rather than guessed at. A
+`-- sqlalign: skip` counts too, under its own `skipped` kind, so a deliberate
+opt-out is distinguishable from a gap in the tool.
+
+## Linting inside `$$` bodies
+
+sqlfluff cannot lint a plpgsql body. To its parser the whole body is one string
+literal, so a function full of badly-written SQL passes clean — and in a
+repository that keeps logic in functions, that is a large blind spot. It is not
+a rule sqlfluff is missing; it is the shape of the parse.
+
+sqlalign already has to find those statements in order to format them, so
+`--lint` hands them to sqlfluff as well. Given this function:
+
+```sql
+CREATE FUNCTION report() RETURNS int AS $$
+BEGIN
+
+SELECT * FROM orders o, customers c WHERE o.cid = c.id;
+
+RETURN 1;
+
+END;
+$$ LANGUAGE plpgsql;
+```
+
+sqlfluff on its own sees the header and nothing else:
+
+```
+L:   1 | P:  17 | CP03 | Function names must be upper case.
+L:   1 | P:  34 | CP05 | Datatypes must be upper case. [capitalisation.types]
+All Finished!
+```
+
+Through sqlalign, the body is linted too:
+
+```console
+$ sqlalign --check --lint report.sql
+L:   1 | P:  17 | CP03 | Function names must be upper case.
+All Finished!
+== [report.sql] inside $$ bodies (sqlfluff cannot reach these on its own)
+L:   8 | P:   1 | AM04 | Query produces an unknown number of result columns. [ambiguous.column_count]
+L:   8 | P:   8 | RF02 | Unqualified reference '*' found in select with more than one referenced table/view. [references.qualification]
+```
+
+Line 8 is line 8 of the file. sqlalign lints a *view* of it — the same text with
+the plpgsql scaffolding replaced by spaces, so every line and column stays where
+it was. Blanking rather than deleting is the point: delete, and every column
+after it shifts, and a finding would point at the wrong place.
+
+Two things follow from how this works:
+
+- **The body is linted after formatting**, like the rest of the file, so
+  whitespace and keyword-case findings inside a body are already fixed by the
+  time sqlfluff sees it. What surfaces is what formatting cannot fix — the
+  semantic rules.
+- **Statements inside an `IF … THEN` branch are not covered.** The layout
+  models a single-statement branch, so there is no statement span to lint.
+
+## Running sqlfluff alongside it
+
+sqlalign and sqlfluff overlap, and left alone they fight — `sqlfluff fix` will
+undo the alignment on every run:
+
+```sql
+-- sqlalign's output                  -- after stock `sqlfluff fix`
+SELECT cust.customer_id               SELECT
+     , cust.email                         cust.customer_id,
+FROM customers    cust                    cust.email
+INNER JOIN orders ord ON …            FROM customers AS cust
+WHERE ord.total    > 0                INNER JOIN orders AS ord ON …
+  AND cust.segment = 'ent';           WHERE
+                                          ord.total > 0
+                                          AND cust.segment = 'ent';
+```
+
+The fix is the one Prettier and `eslint-config-prettier` settled on: the
+formatter owns layout, and the linter is told to stop having opinions about it.
+
+```console
+sqlalign --print-sqlfluff-config > .sqlfluff
+```
+
+With that in place `sqlfluff fix` leaves sqlalign's output byte-identical.
+
+The generated config does two things. It excludes sqlfluff's whole `layout`
+rule **group** — by group rather than by name, so a sqlfluff upgrade that adds a
+layout rule cannot start failing your formatted SQL. And it translates the
+settings where both tools have an opinion (`keyword_case`, `table_alias_style`,
+`neq_style`) into the matching sqlfluff rule config, so the two agree instead of
+contradicting each other.
+
+Every **semantic** rule stays on. Those lint your SQL rather than sqlalign's
+whitespace, and sqlalign preserves the choices they are about — it would be the
+wrong trade to silence them for a formatting truce.
+
+It reads your effective settings, so run it where your config lives:
+
+```console
+sqlalign --print-sqlfluff-config models/orders.sql > .sqlfluff
+```
+
+### One command instead of two
+
+`--lint` formats and then runs sqlfluff over the result:
+
+```console
+$ pip install 'sqlalign[lint]'
+$ sqlalign --lint models/orders.sql
+== [models/orders.sql] FAIL
+L:   4 | P:   1 | AM05 | Join clauses should be fully qualified. [ambiguous.join]
+All Finished!
+```
+
+sqlfluff stays an **optional** dependency — sqlalign's own guarantee does not
+rest on a linter, so neither does its install.
+
+It lints what *would* be written, so `--lint --check` reports on the formatted
+result rather than on whatever is currently on disk. Exit codes are `0` clean,
+`1` findings (or `--check` changes), `2` an error.
+
+A committed `.sqlfluff` wins — your file is a decision someone made, and
+overriding it silently would be the wrong kind of helpful. The generated
+coexistence config is only the fallback when there is nothing to respect. If
+you write one by hand rather than generating it, expect `AL01` noise: sqlfluff
+defaults to requiring `AS` on table aliases, and sqlalign's default omits it.
+
+## The settings panel
+
+> **The panel is experimental.** It is useful and it is tested, but it is the
+> one part of sqlalign not covered by any stability promise: its layout and
+> behaviour may change without a major version. The CLI and the config file are
+> the supported surface.
+
+Eighteen knobs is more than anyone wants to read about. `sqlalign --gui` opens a
+panel next to a live preview — every control re-runs the real engine on the text
+in the pane, so what you see is what the CLI would write:
+
+```console
+sqlalign --gui
+sqlalign --gui --dialect tsql
+```
+
+Left: dialect, preset, and every setting. Right: an editable input pane over the
+formatted result, with a status line counting statements and naming anything that
+declined. A setting that currently does nothing is greyed out rather than left
+sitting there inert — `…indent` only applies when the SELECT list is on its own
+line, `…river gutter` only when clause keywords are set to `river` — and the
+preset box drops to `(custom)` the moment your settings stop matching it.
+
+**Open SQL…** (`⌘O`) loads a file, and the window is named for it from then on.
+**Save formatted…** (`⌘S`) defaults to that same file, so formatting one in place
+is the one-click path and matches what `sqlalign <file>` writes byte for byte;
+the dialog still asks before overwriting. **Copy formatted** is `⌘⇧C` rather than
+`⌘C`, which stays yours for ordinary copying.
+
+**Save config…** writes a `.sqlalign.toml` — the same text `--show-config`
+prints — so the panel is a way to *find* a style, not a second place to keep
+one.
+
+It is Tkinter, from the standard library, so it needs no extra install. On Debian
+and Ubuntu that means `apt install python3-tk`; the flag says so if it is missing
+rather than failing with a traceback.
+
+## Editors
+
+sqlalign has no editor plugin. Two recipes cover most setups.
+
+**Format on save.** Point any "run a command on save" extension at the file and
+let the editor reload it:
+
+```sh
+sqlalign "$FILE"
+```
+
+**Filter the buffer** (vim, and anything with a `!` filter). sqlalign has no
+stdin mode, but it will read `/dev/stdin`:
+
+```vim
+:%!sqlalign --stdout /dev/stdin
+```
+
+That works, with one caveat: config discovery walks up from the *path you named*,
+and `/dev/stdin` is not in your repo, so a committed `.sqlalign.toml` is **not**
+picked up. Pass `--config` explicitly if you filter this way:
+
+```vim
+:%!sqlalign --stdout --config /path/to/.sqlalign.toml /dev/stdin
+```
+
+Formatting the real file (`:!sqlalign %` then `:e!`) has no such problem, and is
+the simpler choice inside a repo.
+
+## Git pre-commit hook
+
+Format staged SQL and re-stage what changed, so what you commit is always
+formatted:
+
+```sh
+#!/bin/sh
+# .githooks/pre-commit
+files=$(git diff --cached --name-only --diff-filter=ACM -- '*.sql')
+[ -z "$files" ] && exit 0
+sqlalign $files || exit $?
+git add $files
+```
+
+```sh
+chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+```
+
+If you would rather **reject** an unformatted commit than fix it, swap the body
+for `sqlalign --check $files` and drop the `git add`.
+
+## CI
+
+One command, no wrapper needed. `--check` exits `1` when anything would change,
+which is exactly what a CI runner treats as a failure:
+
+```sh
+sqlalign --check .
+```
+
+Wrapped in a job step, with uv already on the runner:
+
+```yaml
+- name: Check SQL formatting
+  run: |
+    uv tool install .
+    sqlalign --check .
+```
+
+Use `--diff` instead of `--check` if you want the log to show what is wrong
+rather than only which files are:
+
+```sh
+sqlalign --diff .
+```
+
+Because sqlalign does not lint, it slots in beside a linter rather than replacing
+one — running `sqlfluff lint` in a neighbouring step is the intended setup.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success. Files were formatted, or `--check`/`--diff` found nothing to change. Statements that passed through untouched still exit `0`. |
+| `1` | `--check` or `--diff` found at least one file that would change. Only these two modes ever return `1`. |
+| `2` | A file could not be read, a config file is invalid, or an argument is invalid (an unsupported `--dialect`, an unknown `--align-targets` name, two output modes at once). Also an unexpected engine error on a single file. |
+
+Exit `2` is per-file where it can be: an unreadable or misconfigured file is
+reported on stderr and skipped, and **the rest of the run still processes**. The
+final exit code is the worst one seen.
+
+```sh
+sqlalign nope.sql
+# sqlalign: [Errno 2] No such file or directory: 'nope.sql'
+# exit 2
+```
+
+## Where to go next
+
+- **The full flag reference:** [`cli.md`](cli.md) — every flag, its default, and
+  which ones conflict.
+- **Committing a team style:** [`configuration.md`](configuration.md) — config
+  file discovery, presets, and precedence.
+- **What the output looks like, construct by construct:** [`style.md`](style.md).
+- **The style itself, in the repo:** `samples/queries.sql` is 25 hand-formatted
+  goldens that the test suite asserts byte-for-byte. It is the executable spec.
+- **Positioning, presets and the honest comparison against other formatters:**
+  the [README](../../README.md).
+- **Architecture, the alignment formula, the safety model:**
+  the [Architecture](architecture.md) page.

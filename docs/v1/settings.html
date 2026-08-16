@@ -1,0 +1,890 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings reference — sqlalign docs</title>
+<meta name="description" content="Settings reference — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html" class='here'>Settings reference</a>
+<a href="style.html">The house style</a>
+<a href="cli.html">CLI reference</a>
+<a href="dialects.html">Dialects</a>
+<a href="architecture.html">Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><p class="lede">Every setting sqlalign has, with its type, its
+default, and the <strong>same SQL rendered under each value</strong>. The
+examples on this page are produced by running the formatter when the page is
+built — none of them is written by hand, so none of them can drift away from
+what the tool actually does.</p>
+
+<p>Settings go in a <code>.sqlalign.toml</code> file under
+<code>[tool.sqlalign]</code>, and most have a CLI flag that overrides the file
+for one run. See <a href="configuration.html">Configuration</a> for how the two
+combine, and <a href="cli.html">CLI reference</a> for the flags.</p>
+<div class="settings-index"><h2 id="all-settings">All settings<a class="anchor" href="#all-settings">#</a></h2><ul>
+<li><a href="#keyword_case"><code>keyword_case</code></a><span>Whether SQL keywords are upper- or lowercase.</span></li>
+<li><a href="#align"><code>align</code></a><span>The master switch for columnar alignment.</span></li>
+<li><a href="#align_targets"><code>align_targets</code></a><span>Which columns are aligned, when <code>align</code> is on.</span></li>
+<li><a href="#comma_position"><code>comma_position</code></a><span>Whether a list's commas lead or trail their line.</span></li>
+<li><a href="#boolean_operator_position"><code>boolean_operator_position</code></a><span>Whether <code>AND</code> / <code>OR</code> lead or trail their line.</span></li>
+<li><a href="#on_placement"><code>on_placement</code></a><span>Whether a join's <code>ON</code> rides the join line or takes its own.</span></li>
+<li><a href="#select_placement"><code>select_placement</code></a><span>Whether the first select item rides the <code>SELECT</code> line.</span></li>
+<li><a href="#select_indent"><code>select_indent</code></a><span>How far the select list is indented under <code>SELECT</code>.</span></li>
+<li><a href="#clause_keyword_align"><code>clause_keyword_align</code></a><span>Whether root clause keywords are left-aligned or form a river.</span></li>
+<li><a href="#river_gutter"><code>river_gutter</code></a><span>How wide the river's gutter is.</span></li>
+<li><a href="#table_alias_style"><code>table_alias_style</code></a><span>Whether a table alias is written bare or with <code>AS</code>.</span></li>
+<li><a href="#neq_style"><code>neq_style</code></a><span>How the not-equal operator is spelled.</span></li>
+<li><a href="#decimal_style"><code>decimal_style</code></a><span>How the fixed-point type is spelled.</span></li>
+<li><a href="#width"><code>width</code></a><span>The column the formatter tries to stay inside.</span></li>
+<li><a href="#blank_lines_between_statements"><code>blank_lines_between_statements</code></a><span>How many blank lines separate two statements.</span></li>
+<li><a href="#body_blank_lines"><code>body_blank_lines</code></a><span>How many blank lines separate statements inside a <code>$$</code> body.</span></li>
+<li><a href="#format_dollar_bodies"><code>format_dollar_bodies</code></a><span>Whether <code>$$ … $$</code> procedure bodies are formatted at all.</span></li>
+<li><a href="#protect_templating"><code>protect_templating</code></a><span>Whether Jinja / dbt templating is masked before parsing.</span></li>
+</ul></div>
+<section class="setting" id="keyword_case">
+<h3><code>keyword_case</code>
+<a class="anchor" href="#keyword_case" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether SQL keywords are upper- or lowercase.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;upper&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>Applies to keywords and function names, never to identifiers or string literals — a quoted identifier keeps the spelling you gave it, because in most dialects that spelling is load-bearing.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, email, signup_date from customers where active;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;upper&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>&#x27;lower&#x27;</code></figcaption><pre class="sql"><code>select customer_id
+     , email
+     , signup_date
+from customers
+where active;</code></pre></figure>
+</div></section>
+<section class="setting" id="align">
+<h3><code>align</code>
+<a class="anchor" href="#align" aria-label="Link to this setting">#</a></h3>
+<p class="summary">The master switch for columnar alignment.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>bool</code></dd></div>
+  <div><dt>Default</dt><dd><code>True</code></dd></div>
+</dl>
+<div class="detail"><p>With it off, every alignment column collapses to a single space and you get the same line structure without the padding — which is what nine of ten published style guides ask for. Nothing else about the layout changes, so turning it off is not a different style so much as the same style unpadded.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>True</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>False</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="align_targets">
+<h3><code>align_targets</code>
+<a class="anchor" href="#align_targets" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Which columns are aligned, when <code>align</code> is on.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>frozenset</code></dd></div>
+  <div><dt>Default</dt><dd><code>the default set</code></dd></div>
+</dl>
+<div class="detail"><p>A set of names. <code>aliases</code> is shorthand for <code>column_aliases</code> plus <code>table_aliases</code>. Anything not listed simply takes one space, so you can keep the join-condition column and drop the rest.</p>
+</div>
+<div class="note"><p>Available: <code>aliases</code>, <code>case_results</code>, <code>column_aliases</code>, <code>column_constraints</code>, <code>column_types</code>, <code>join_conditions</code>, <code>operators</code>, <code>table_aliases</code>, <code>table_names</code></p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>the default set</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>{operators}</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>frozenset()</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="comma_position">
+<h3><code>comma_position</code>
+<a class="anchor" href="#comma_position" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether a list's commas lead or trail their line.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;leading&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>Leading commas put the separator where the eye already is when scanning a column of items, and make adding or removing the last item a one-line diff.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, email, signup_date from customers where active;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;leading&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>&#x27;trailing&#x27;</code></figcaption><pre class="sql"><code>SELECT customer_id,
+       email,
+       signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+</div></section>
+<section class="setting" id="boolean_operator_position">
+<h3><code>boolean_operator_position</code>
+<a class="anchor" href="#boolean_operator_position" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether <code>AND</code> / <code>OR</code> lead or trail their line.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;leading&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>The same choice as <code>comma_position</code>, for predicates. Leading operators right-align under the clause keyword, so <code>WHERE</code>, <code>AND</code> and <code>OR</code> all end in the same column.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;leading&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>&#x27;trailing&#x27;</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0 AND
+      cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="on_placement">
+<h3><code>on_placement</code>
+<a class="anchor" href="#on_placement" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether a join's <code>ON</code> rides the join line or takes its own.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;inline&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>Inline keeps a join to one row and lets the <code>ON</code> column align across the whole FROM block. On its own line it drops below, indented, which reads better when conditions are long.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;inline&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>&#x27;own_line&#x27;</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord
+  ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="select_placement">
+<h3><code>select_placement</code>
+<a class="anchor" href="#select_placement" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether the first select item rides the <code>SELECT</code> line.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;inline&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>Inline starts the list on the <code>SELECT</code> row itself. <code>own_line</code> puts every item below, indented by <code>select_indent</code> — the dbt and GitLab convention.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, email, signup_date from customers where active;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;inline&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>&#x27;own_line&#x27;</code></figcaption><pre class="sql"><code>SELECT
+  customer_id
+, email
+, signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+</div></section>
+<section class="setting" id="select_indent">
+<h3><code>select_indent</code>
+<a class="anchor" href="#select_indent" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How far the select list is indented under <code>SELECT</code>.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>int</code></dd></div>
+  <div><dt>Default</dt><dd><code>2</code></dd></div>
+</dl>
+<div class="detail"><p>Only applies when <code>select_placement</code> is <code>own_line</code>; it is greyed out in the GUI otherwise, and ignored here.</p>
+</div>
+<div class="note"><p>Rendered below with <code>select_placement = own_line</code>, since the setting does nothing without it.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, email, signup_date from customers where active;</code></pre>
+<div class="panels">
+<figure><figcaption><code>2</code> · default</figcaption><pre class="sql"><code>SELECT
+  customer_id
+, email
+, signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>4</code></figcaption><pre class="sql"><code>SELECT
+    customer_id
+  , email
+  , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+</div></section>
+<section class="setting" id="clause_keyword_align">
+<h3><code>clause_keyword_align</code>
+<a class="anchor" href="#clause_keyword_align" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether root clause keywords are left-aligned or form a river.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;left&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p>A river right-aligns every root keyword so its last character lands on a shared gutter, which puts every clause body in one column. It is the arrangement Holywell's style guide describes.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;left&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+FROM customers    cust
+INNER JOIN orders ord ON ord.customer_id = cust.id
+WHERE ord.total    &gt; 0
+  AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>&#x27;river&#x27;</code></figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+  FROM customers         cust
+       INNER JOIN orders ord ON ord.customer_id = cust.id
+ WHERE ord.total    &gt; 0
+   AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="river_gutter">
+<h3><code>river_gutter</code>
+<a class="anchor" href="#river_gutter" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How wide the river's gutter is.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>int</code></dd></div>
+  <div><dt>Default</dt><dd><code>6</code></dd></div>
+</dl>
+<div class="detail"><p>The column every root keyword ends on. Fixed rather than derived from the widest keyword present, so a clause added later cannot shift the whole statement sideways.</p>
+</div>
+<div class="note"><p>Rendered below with <code>clause_keyword_align = river</code>, since the setting does nothing without it.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id, cust.email, ord.total from customers cust inner join orders ord on ord.customer_id = cust.id where ord.total &gt; 0 and cust.segment = &#x27;enterprise&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>6</code> · default</figcaption><pre class="sql"><code>SELECT cust.id
+     , cust.email
+     , ord.total
+  FROM customers         cust
+       INNER JOIN orders ord ON ord.customer_id = cust.id
+ WHERE ord.total    &gt; 0
+   AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+<figure><figcaption><code>10</code></figcaption><pre class="sql"><code>    SELECT cust.id
+         , cust.email
+         , ord.total
+      FROM customers         cust
+           INNER JOIN orders ord ON ord.customer_id = cust.id
+     WHERE ord.total    &gt; 0
+       AND cust.segment = &#x27;enterprise&#x27;;</code></pre></figure>
+</div></section>
+<section class="setting" id="table_alias_style">
+<h3><code>table_alias_style</code>
+<a class="anchor" href="#table_alias_style" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether a table alias is written bare or with <code>AS</code>.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;bare&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p><code>FROM orders ord</code> and <code>FROM orders AS ord</code> parse identically, so which one comes out is sqlalign's decision rather than yours — which is exactly why it is a setting.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select cust.id as customer, sum(ord.total) as lifetime_value from customers cust join orders ord on ord.customer_id = cust.id group by cust.id;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;bare&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT cust.id        AS customer
+     , SUM(ord.total) AS lifetime_value
+FROM customers cust
+JOIN orders    ord ON ord.customer_id = cust.id
+GROUP BY cust.id;</code></pre></figure>
+<figure><figcaption><code>&#x27;as&#x27;</code></figcaption><pre class="sql"><code>SELECT cust.id        AS customer
+     , SUM(ord.total) AS lifetime_value
+FROM customers AS cust
+JOIN orders    AS ord ON ord.customer_id = cust.id
+GROUP BY cust.id;</code></pre></figure>
+</div></section>
+<section class="setting" id="neq_style">
+<h3><code>neq_style</code>
+<a class="anchor" href="#neq_style" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How the not-equal operator is spelled.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;!=&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p><code>&lt;&gt;</code> and <code>!=</code> parse to the same node, so the distinction is lost before layout ever runs and one of them has to be chosen. Set it to whatever your linter expects.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select a from t where status != &#x27;draft&#x27; and total &lt;&gt; 0;</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;!=&#x27;</code> · default</figcaption><pre class="sql"><code>SELECT a
+FROM t
+WHERE status != &#x27;draft&#x27;
+  AND total  != 0;</code></pre></figure>
+<figure><figcaption><code>&#x27;&lt;&gt;&#x27;</code></figcaption><pre class="sql"><code>SELECT a
+FROM t
+WHERE status &lt;&gt; &#x27;draft&#x27;
+  AND total  &lt;&gt; 0;</code></pre></figure>
+</div></section>
+<section class="setting" id="decimal_style">
+<h3><code>decimal_style</code>
+<a class="anchor" href="#decimal_style" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How the fixed-point type is spelled.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>str</code></dd></div>
+  <div><dt>Default</dt><dd><code>&#x27;NUMERIC&#x27;</code></dd></div>
+</dl>
+<div class="detail"><p><code>DECIMAL</code> and <code>NUMERIC</code> are synonyms that parse to one node — the same forced choice as <code>neq_style</code>.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>create table t (amount decimal(10, 2), rate numeric(5, 4));</code></pre>
+<div class="panels">
+<figure><figcaption><code>&#x27;NUMERIC&#x27;</code> · default</figcaption><pre class="sql"><code>CREATE TABLE t (
+    amount NUMERIC(10, 2)
+  , rate   NUMERIC(5, 4)
+);</code></pre></figure>
+<figure><figcaption><code>&#x27;DECIMAL&#x27;</code></figcaption><pre class="sql"><code>CREATE TABLE t (
+    amount DECIMAL(10, 2)
+  , rate   DECIMAL(5, 4)
+);</code></pre></figure>
+</div></section>
+<section class="setting" id="width">
+<h3><code>width</code>
+<a class="anchor" href="#width" aria-label="Link to this setting">#</a></h3>
+<p class="summary">The column the formatter tries to stay inside.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>Width</code></dd></div>
+  <div><dt>Default</dt><dd><code>100</code></dd></div>
+</dl>
+<div class="detail"><p>A trigger for the breaks that are modelled, not a hard ceiling: an expression with no modelled break stays on one line however long it is. <code>0</code> turns the limit off entirely.</p>
+</div>
+<div class="note"><p><code>0</code> turns the limit off, which is the same as a width nothing reaches — so it is described here rather than shown.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, coalesce(sum(case when status = &#x27;paid&#x27; then amount end), 0.00) as paid_total from ledger group by customer_id;</code></pre>
+<div class="panels">
+<figure><figcaption><code>100</code> · default</figcaption><pre class="sql"><code>SELECT customer_id
+     , COALESCE(SUM(CASE WHEN status = &#x27;paid&#x27; THEN amount END), 0.00) AS paid_total
+FROM ledger
+GROUP BY customer_id;</code></pre></figure>
+<figure><figcaption><code>60</code></figcaption><pre class="sql"><code>SELECT customer_id
+     , COALESCE(SUM(CASE WHEN status = &#x27;paid&#x27;
+                           THEN amount
+                     END), 0.00) AS paid_total
+FROM ledger
+GROUP BY customer_id;</code></pre></figure>
+</div></section>
+<section class="setting" id="blank_lines_between_statements">
+<h3><code>blank_lines_between_statements</code>
+<a class="anchor" href="#blank_lines_between_statements" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How many blank lines separate two statements.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>int or unset</code></dd></div>
+  <div><dt>Default</dt><dd><code>None</code></dd></div>
+</dl>
+<div class="detail"><p>Unset, the house rule applies: exactly one blank line between two statements when both are multi-line, and otherwise whatever adjacency the input had. A number overrides that for every pair.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select a from t;
+update u set b = 2 where c = 3;</code></pre>
+<div class="panels">
+<figure><figcaption><code>None</code> · default</figcaption><pre class="sql"><code>SELECT a
+FROM t;
+
+UPDATE u
+SET b = 2
+WHERE c = 3;</code></pre></figure>
+<figure><figcaption><code>0</code></figcaption><pre class="sql"><code>SELECT a
+FROM t;
+UPDATE u
+SET b = 2
+WHERE c = 3;</code></pre></figure>
+<figure><figcaption><code>2</code></figcaption><pre class="sql"><code>SELECT a
+FROM t;
+
+
+UPDATE u
+SET b = 2
+WHERE c = 3;</code></pre></figure>
+</div></section>
+<section class="setting" id="body_blank_lines">
+<h3><code>body_blank_lines</code>
+<a class="anchor" href="#body_blank_lines" aria-label="Link to this setting">#</a></h3>
+<p class="summary">How many blank lines separate statements inside a <code>$$</code> body.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>int</code></dd></div>
+  <div><dt>Default</dt><dd><code>1</code></dd></div>
+</dl>
+<div class="detail"><p>A procedure body has its own vertical rhythm, separate from the one between top-level statements.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>create function bump() returns int as $$ begin update t set n = n + 1; return 1; end; $$ language plpgsql;</code></pre>
+<div class="panels">
+<figure><figcaption><code>1</code> · default</figcaption><pre class="sql"><code>CREATE FUNCTION bump()
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+
+BEGIN
+
+UPDATE t
+SET n = n + 1;
+
+RETURN 1;
+
+END;
+$$;</code></pre></figure>
+<figure><figcaption><code>0</code></figcaption><pre class="sql"><code>CREATE FUNCTION bump()
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+
+BEGIN
+UPDATE t
+SET n = n + 1;
+RETURN 1;
+END;
+$$;</code></pre></figure>
+</div></section>
+<section class="setting" id="format_dollar_bodies">
+<h3><code>format_dollar_bodies</code>
+<a class="anchor" href="#format_dollar_bodies" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether <code>$$ … $$</code> procedure bodies are formatted at all.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>bool</code></dd></div>
+  <div><dt>Default</dt><dd><code>True</code></dd></div>
+</dl>
+<div class="detail"><p>With it off the whole <code>CREATE FUNCTION</code> is left byte-identical. Useful for staging a migration: format the repository, leave the procedures for a later pass.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>create function bump() returns int as $$ begin update t set n = n + 1; return 1; end; $$ language plpgsql;</code></pre>
+<div class="panels">
+<figure><figcaption><code>True</code> · default</figcaption><pre class="sql"><code>CREATE FUNCTION bump()
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+
+BEGIN
+
+UPDATE t
+SET n = n + 1;
+
+RETURN 1;
+
+END;
+$$;</code></pre></figure>
+<figure><figcaption><code>False</code></figcaption><pre class="sql"><code>create function bump() returns int as $$ begin update t set n = n + 1; return 1; end; $$ language plpgsql;</code></pre></figure>
+</div></section>
+<section class="setting" id="protect_templating">
+<h3><code>protect_templating</code>
+<a class="anchor" href="#protect_templating" aria-label="Link to this setting">#</a></h3>
+<p class="summary">Whether Jinja / dbt templating is masked before parsing.</p>
+<dl class="meta">
+  <div><dt>Type</dt><dd><code>bool</code></dd></div>
+  <div><dt>Default</dt><dd><code>True</code></dd></div>
+</dl>
+<div class="detail"><p><code>{{ ref('x') }}</code> is not SQL and sqlglot cannot parse it. With this on, each template expression is replaced by a placeholder for the duration of the parse and restored afterwards, so a dbt model formats instead of declining.</p>
+</div>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select * from {{ ref(&#x27;stg_orders&#x27;) }} where status = &#x27;paid&#x27;;</code></pre>
+<div class="panels">
+<figure><figcaption><code>True</code> · default</figcaption><pre class="sql"><code>SELECT *
+FROM {{ ref(&#x27;stg_orders&#x27;) }}
+WHERE status = &#x27;paid&#x27;;</code></pre></figure>
+<figure><figcaption><code>False</code></figcaption><p class="declined">Declined — passed through unchanged.<br><span>parse error</span></p><pre class="sql"><code>select * from {{ ref(&#x27;stg_orders&#x27;) }} where status = &#x27;paid&#x27;;</code></pre></figure>
+</div></section>
+<h2 id="presets">Presets<a class="anchor" href="#presets">#</a></h2>
+<p>A preset is a named bundle of the settings above. <code>--preset NAME</code> applies one, and any explicit setting still wins over it.</p>
+<p class="sample-label">Given this input:</p><pre class="sql"><code>select customer_id, email, signup_date from customers where active;</code></pre>
+<div class="panels">
+<figure><figcaption><code>compact</code></figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>dbt</code></figcaption><pre class="sql"><code>select
+    customer_id,
+    email,
+    signup_date
+from customers
+where active;</code></pre></figure>
+<figure><figcaption><code>gitlab</code></figcaption><pre class="sql"><code>SELECT
+  customer_id,
+  email,
+  signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>house</code></figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+<figure><figcaption><code>river</code></figcaption><pre class="sql"><code>SELECT customer_id
+     , email
+     , signup_date
+  FROM customers
+ WHERE active;</code></pre></figure>
+<figure><figcaption><code>trailing</code></figcaption><pre class="sql"><code>SELECT customer_id,
+       email,
+       signup_date
+FROM customers
+WHERE active;</code></pre></figure>
+</div></main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#all-settings">All settings</a><a class="lvl3" href="#keyword_case">keyword_case</a><a class="lvl3" href="#align">align</a><a class="lvl3" href="#align_targets">align_targets</a><a class="lvl3" href="#comma_position">comma_position</a><a class="lvl3" href="#boolean_operator_position">boolean_operator_position</a><a class="lvl3" href="#on_placement">on_placement</a><a class="lvl3" href="#select_placement">select_placement</a><a class="lvl3" href="#select_indent">select_indent</a><a class="lvl3" href="#clause_keyword_align">clause_keyword_align</a><a class="lvl3" href="#river_gutter">river_gutter</a><a class="lvl3" href="#table_alias_style">table_alias_style</a><a class="lvl3" href="#neq_style">neq_style</a><a class="lvl3" href="#decimal_style">decimal_style</a><a class="lvl3" href="#width">width</a><a class="lvl3" href="#blank_lines_between_statements">blank_lines_between_statements</a><a class="lvl3" href="#body_blank_lines">body_blank_lines</a><a class="lvl3" href="#format_dollar_bodies">format_dollar_bodies</a><a class="lvl3" href="#protect_templating">protect_templating</a><a class="lvl2" href="#presets">Presets</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

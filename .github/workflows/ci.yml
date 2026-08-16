@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push supersedes the run in flight. Actions minutes are free for public
+# repositories, but a queue of stale runs still delays the useful one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The versions pyproject claims to support. Both, because a classifier
+        # nobody runs is a guess.
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked --all-extras
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest -q
+
+  # The formatter's own output is the product, so a golden that no longer
+  # matches is a release blocker rather than a test failure among others. This
+  # runs the same assertion the suite does, separately, so the reason a red
+  # build is red is visible from the job list.
+  goldens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Goldens are byte-exact
+        run: uv run pytest -q -k goldens_unchanged
+
+  # docs/v1 is generated and committed, so a stale build ships. Rebuilding here
+  # proves the committed site matches its generator.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Site matches its generator
+        run: uv run pytest -q tests/test_docs_site.py

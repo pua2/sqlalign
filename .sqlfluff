@@ -1,0 +1,199 @@
+# vim: ft=toml
+
+# ref: https://docs.sqlfluff.com/en/stable/rules.html
+# ref: https://levelup.gitconnected.com/sqlfluff-the-best-linter-for-sql-aa358c1eca40
+
+[sqlfluff]
+dialect = postgres
+exclude_rules =
+    aliasing.unique.table,
+    aliasing.unused,
+    ambiguous.join,
+    ambiguous.order_by,
+    convention.not_equal,
+    convention.terminator,
+    layout.indent,
+    layout.keyword_newline,
+    layout.operators,
+    layout.select_targets,
+    layout.spacing,
+    postgres.excessive_locks,
+    references.keywords,
+    references.qualification,
+    references.quoting,
+    structure.column_order,
+    structure.else_null,
+    structure.subquery,
+    structure.join_condition_order,
+    structure.unused_join,
+    # --- House-style conflicts (sqlalign preserves the author's valid choices;
+    # it aligns and cases, it never rewrites these). Each is a deliberate
+    # exclusion, not a formatter bug — see README "sqlfluff gate". ---
+    # AM06: house preserves the source GROUP BY/ORDER BY reference form
+    # (positional `GROUP BY 1, 2` in #6, named elsewhere) — it does not
+    # normalize one query's choice to match another's.
+    ambiguous.column_references,
+    # AL03: house does not force an alias onto every expression; INSERT ... SELECT
+    # source columns (#11) are legitimately unaliased.
+    aliasing.expression,
+    # CV11: house preserves the source cast form (`::` vs CAST(...)) faithfully
+    # (#12 mixes both by design) rather than unifying to one casting style.
+    convention.casting_style
+
+processes = -2
+# Set this to 120, later;
+max_line_length = -1
+large_file_skip_byte_limit = 0
+max_parse_depth = 512
+
+# layout.indent:
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = -1
+indented_using_on = True
+indented_on_contents = True
+implicit_indents = forbid
+
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+#ignore_words = None
+#ignore_words_regex = None
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+
+# layout.spacing:
+[sqlfluff:layout:type:alias_expression]
+# We want non-default spacing _before_ the alias expressions.
+spacing_before = align
+# We want to align them within the next outer select clause.
+# This means for example that alias expressions within the FROM
+# or JOIN clause would _not_ be aligned with them.
+align_within = select_clause
+# The point at which to stop searching outward for siblings, which
+# in this example would likely be the boundary of a CTE. Stopping
+# when we hit brackets is usually a good rule of thumb for this
+# configuration.
+align_scope = bracketed
+
+[sqlfluff:layout:type:comma]
+spacing_before = touch
+line_position = leading
+
+[sqlfluff:rules:aliasing.table]
+aliasing = implicit
+
+[sqlfluff:rules:capitalisation.literals]
+# Null & Boolean Literals
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = consistent
+
+# layout.spacing:
+[sqlfluff:layout:type:comparison_operator]
+spacing_before = align
+align_within = from_clause
+line_position = leading
+
+[sqlfluff:layout:type:assignment_operator]
+spacing_within = touch
+line_position = leading
+
+[sqlfluff:layout:type:binary_operator]
+spacing_within = touch
+line_position = leading
+
+[sqlfluff:layout:type:statement_terminator]
+spacing_before = touch
+line_position = trailing
+
+[sqlfluff:layout:type:end_of_file]
+spacing_before = touch
+
+[sqlfluff:layout:type:set_operator]
+line_position = alone:strict
+
+[sqlfluff:layout:type:start_bracket]
+spacing_after = touch
+
+[sqlfluff:layout:type:end_bracket]
+spacing_before = touch
+
+[sqlfluff:layout:type:start_square_bracket]
+spacing_after = touch
+
+[sqlfluff:layout:type:end_square_bracket]
+spacing_before = touch
+
+[sqlfluff:layout:type:start_angle_bracket]
+spacing_after = touch
+
+[sqlfluff:layout:type:end_angle_bracket]
+spacing_before = touch
+
+[sqlfluff:layout:type:casting_operator]
+spacing_before = touch
+spacing_after = touch:inline
+
+[sqlfluff:layout:type:slice]
+spacing_before = touch
+spacing_after = touch
+
+[sqlfluff:layout:type:object_reference]
+spacing_within = touch:inline
+
+[sqlfluff:layout:type:numeric_literal]
+spacing_within = touch:inline
+
+[sqlfluff:layout:type:sign_indicator]
+spacing_after = touch:inline
+
+[sqlfluff:layout:type:function_name]
+spacing_within = touch:inline
+spacing_after = touch:inline
+
+[sqlfluff:layout:type:array_type]
+spacing_within = touch:inline
+
+[sqlfluff:layout:type:typed_array_literal]
+spacing_within = touch
+
+[sqlfluff:layout:type:sized_array_type]
+spacing_within = touch
+
+[sqlfluff:layout:type:struct_type]
+spacing_within = touch:inline
+
+[sqlfluff:layout:type:data_type]
+spacing_within = touch:inline
+
+[sqlfluff:layout:type:typed_struct_literal]
+spacing_within = touch
+
+[sqlfluff:layout:type:semi_structured_expression]
+spacing_within = touch:inline
+spacing_before = touch:inline
+
+[sqlfluff:layout:type:array_accessor]
+spacing_before = touch:inline
+
+
+[sqlfluff:rules:references.quoting]
+# Policy on quoted and unquoted identifiers
+prefer_quoted_identifiers = False
+ignore_words = None
+ignore_words_regex = None
+
+[sqlfluff:rules:layout.long_lines]
+# Line length
+ignore_comment_lines = False
+ignore_comment_clauses = False
+
+[sqlfluff:rules:layout.select_targets]
+wildcard_policy = single
+
+[sqlfluff:rules:structure.subquery]
+# By default, allow subqueries in from clauses, but not join clauses
+forbid_subquery_in = join

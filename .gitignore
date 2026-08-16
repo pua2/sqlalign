@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv
+.venv.nosync/
+dist/
+build/
+*.egg-info/
+.superpowers/
+
+# Design notes, plans and research from the build. Kept on disk, out of the
+# repository: they are working documents addressed to one reader, they carry
+# absolute local paths, and they sat inside `docs/` where they would ship with
+# the published site.
+docs/superpowers/
+
+# scratch scripts (e.g. from exploratory agents) must not be committed
+/probe_*.py

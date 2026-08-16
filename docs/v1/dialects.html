@@ -1,0 +1,837 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialects — sqlalign docs</title>
+<meta name="description" content="Dialects — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html">Settings reference</a>
+<a href="style.html">The house style</a>
+<a href="cli.html">CLI reference</a>
+<a href="dialects.html" class='here'>Dialects</a>
+<a href="architecture.html">Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><p>sqlalign parses and prints three dialects. Pick one with <code>--dialect</code>:</p>
+<pre><code class="language-sh">sqlalign query.sql                      # postgres (the default)
+sqlalign --dialect redshift ddl.sql
+sqlalign --dialect tsql report.sql
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Dialect</th>
+<th>Flag</th>
+<th>Covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Postgres</td>
+<td><code>--dialect postgres</code> (default)</td>
+<td>Postgres SQL, including <code>$$</code>-quoted plpgsql function and procedure bodies</td>
+</tr>
+<tr>
+<td>Redshift</td>
+<td><code>--dialect redshift</code></td>
+<td>Redshift SQL: <code>ENCODE</code>, <code>DISTSTYLE</code>/<code>DISTKEY</code>/<code>SORTKEY</code>, <code>LISTAGG … WITHIN GROUP</code>, plpgsql stored procedures</td>
+</tr>
+<tr>
+<td>SQL Server</td>
+<td><code>--dialect tsql</code></td>
+<td>T-SQL: <code>TOP</code>, <code>[bracketed]</code> identifiers, <code>@variables</code>, <code>AS BEGIN … END</code> procedures, <code>GO</code> batches</td>
+</tr>
+</tbody>
+</table>
+<p>Three things to know before you read the per-dialect sections:</p>
+<p><strong><code>--dialect</code> is a command-line flag only.</strong> It is not a config-file key. Putting
+<code>dialect = &quot;redshift&quot;</code> in <code>.sqlalign.toml</code> is an error, not a silent no-op:</p>
+<pre><code class="language-console">$ sqlalign --stdout q.sql
+sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['dialect']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'boolean_operator_position', 'comma_position', 'decimal_style', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'width']
+</code></pre>
+<p>If a repository holds SQL for more than one engine, run sqlalign once per
+directory with the right flag, or use <code>--exclude</code> to split the run.</p>
+<p><strong>There is no dialect auto-detection.</strong> sqlalign will not sniff your file, and
+naming the wrong dialect is not covered by the safety guarantee — that guarantee
+is scoped to the dialect you asked for, and the layout handlers emit <em>that</em>
+dialect's keywords. Pass the flag that matches the engine the file will run on.</p>
+<p><strong>A dialect outside the three is refused, not attempted.</strong> The CLI rejects the
+argument outright:</p>
+<pre><code class="language-console">$ sqlalign --dialect mysql q.sql
+sqlalign: error: argument --dialect: invalid choice: 'mysql' (choose from postgres, redshift, tsql)
+</code></pre>
+<p>and the Python API raises rather than producing output:</p>
+<pre><code class="language-console">ValueError: unsupported dialect 'snowflake'; sqlalign supports postgres, redshift, tsql
+</code></pre>
+<p>The reason that refusal is loud, rather than a best-effort attempt, is the
+subject of the last section on this page.</p>
+<h2 id="postgres">Postgres<a class="anchor" href="#postgres" aria-label="Link to this section">#</a></h2>
+<p>The default, and the dialect the style was designed against. Twenty-four of the
+twenty-nine golden fixtures are Postgres: selects, joins, <code>WHERE</code> with
+<code>AND</code>/<code>OR</code>/<code>IN</code>/<code>BETWEEN</code>/<code>LIKE</code>, aggregates, CTEs, subqueries, <code>CASE</code>, window
+functions, set operations, <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>/<code>MERGE</code>, nested expressions
+and comments, <code>CREATE TABLE</code>, CTAS, views and materialized views, <code>CREATE FUNCTION</code> and <code>CREATE PROCEDURE</code>, <code>TRUNCATE</code>, <code>CREATE INDEX</code> and <code>GRANT</code>.</p>
+<pre><code class="language-console">$ sqlalign --stdout query.sql
+SELECT cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+FROM customers               cust
+INNER JOIN orders            ord        ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr       ON addr.order_id       = ord.order_id
+                                       AND addr.address_type   = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<p>Both cast forms survive as written, at every nesting depth — sqlalign will not
+unify them for you:</p>
+<pre><code class="language-console">$ sqlalign --stdout casts.sql
+SELECT x::NUMERIC      AS v
+     , CAST(y AS DATE) AS d
+FROM t;
+</code></pre>
+<p>Redshift behaves identically here. T-SQL does not, because it has no <code>::</code>
+operator at all — see below.</p>
+<h3 id="dollar-quoted-bodies">Dollar-quoted bodies<a class="anchor" href="#dollar-quoted-bodies" aria-label="Link to this section">#</a></h3>
+<p>A <code>$$ … $$</code> plpgsql body is parsed and formatted with the same engine as
+top-level SQL, not treated as an opaque string:</p>
+<pre><code class="language-console">$ sqlalign --stdout function.sql
+CREATE OR REPLACE FUNCTION get_customer_ltv(p_customer_id INT)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+
+DECLARE v_ltv NUMERIC;
+
+BEGIN
+
+SELECT SUM(total) INTO v_ltv
+FROM orders
+WHERE customer_id = p_customer_id
+  AND status      = 'complete';
+
+IF v_ltv IS NULL
+  THEN v_ltv := 0;
+END IF;
+
+RETURN v_ltv;
+
+END;
+$$;
+</code></pre>
+<p><code>--no-format-bodies</code> leaves every <code>$$</code> body byte-identical if you would rather it
+did not.</p>
+<p>Unmodelled plpgsql constructs — cursors, <code>FOR</code> loops, <code>EXCEPTION</code> blocks — pass
+through per statement inside the body, so the rest of the procedure still
+formats.</p>
+<p><code>LANGUAGE sql</code> bodies format too. They are a bare statement list rather than a
+DECLARE/BEGIN/END block, so they get their own branch — but each statement goes
+through the same renderer a plpgsql body's statements do, so the two cannot
+drift apart. A body in a language that is not SQL at all (<code>plpythonu</code>,
+<code>plperl</code>) is declined at the header.</p>
+<h3 id="what-postgres-declines">What Postgres declines<a class="anchor" href="#what-postgres-declines" aria-label="Link to this section">#</a></h3>
+<p>Anything without a layout handler passes through byte-identical with a warning.
+<code>PIVOT</code> is a current example:</p>
+<pre><code class="language-console">$ sqlalign --stdout declines.sql
+sqlalign: declines.sql: unsupported construct, passed through: select * from t pivot (sum(x) for y in (
+select * from t pivot (sum(x) for y in (1, 2)) p;
+INSERT INTO staging
+VALUES (1, 2);
+
+INSERT INTO staging
+(  a)
+SELECT a
+FROM source;
+</code></pre>
+<p><code>PIVOT</code>/<code>UNPIVOT</code> declines <strong>under Postgres only</strong>, and not because it is hard:
+Postgres has no such syntax. sqlglot's Postgres generator drops the clause
+silently — <code>SELECT * FROM t PIVOT(...)</code> comes back as <code>SELECT * FROM t</code>, the
+whole thing gone — so declining is the only safe answer, and the re-parse guard
+is what noticed. Under <code>--dialect redshift</code> and <code>--dialect tsql</code>, which do have
+it, <code>PIVOT</code> formats:</p>
+<pre><code class="language-sql">SELECT *
+FROM (SELECT a
+           , b
+           , c
+      FROM src
+     ) s PIVOT(AVG(c) FOR b IN (1, 2)) AS p;
+</code></pre>
+<p>The check renders the node and looks at what comes out, rather than consulting a
+list of dialects — so if sqlglot ever grows Postgres support, this stops
+declining on its own.</p>
+<p>Run <code>sqlalign --report</code> over your own SQL rather than trusting this list — it
+counts what actually declined, ranked, so you can see whether any of it matters
+to you.</p>
+<p>The legacy comma join — <code>FROM a, b</code> — formats, and is worth a note because it
+was once declined. It parses as a join with no condition, exactly like
+<code>CROSS JOIN</code> does, and rebuilding it through the join keyword would emit
+<code>FROM a JOIN b</code>, which Postgres rejects: a bare <code>JOIN</code> requires a condition.
+The re-parse check cannot catch that either, because sqlglot reads its own
+lenient output back without complaint. The option that was missed is the
+obvious one — emit the comma, which is both valid and what the author wrote:</p>
+<pre><code class="language-sql">SELECT 1
+FROM a x
+   , b y
+WHERE x.id = y.id;
+</code></pre>
+<h2 id="redshift">Redshift<a class="anchor" href="#redshift" aria-label="Link to this section">#</a></h2>
+<p>Use <code>--dialect redshift</code> for Redshift DDL in particular — the column encodings
+and table attributes get their own aligned columns and clause lines:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect redshift fact_orders.sql
+CREATE TABLE fact_orders (
+    order_id    BIGINT NOT NULL
+  , customer_id BIGINT NOT NULL ENCODE az64
+  , order_date  DATE   NOT NULL ENCODE az64
+  , total       NUMERIC(12, 2)  ENCODE az64
+  , channel     VARCHAR(32)     ENCODE lzo
+)
+DISTSTYLE KEY DISTKEY (customer_id)
+COMPOUND SORTKEY (order_date, customer_id);
+</code></pre>
+<p>Two details worth noting in that output. The <code>ENCODE</code> keyword is uppercased but
+its <em>value</em> is passed through as written — <code>az64</code> stays <code>az64</code>, and <code>AZ64</code> would
+stay <code>AZ64</code>. And the constraint alignment is per kind: the <code>NOT NULL</code> column pads
+over only the lines that carry <code>NOT NULL</code>, and the <code>ENCODE</code> column pads over only
+the lines that carry <code>ENCODE</code>, so a row with no nullability constraint does not
+drag the encoding column right.</p>
+<p>One type spelling changes under Redshift that does not under Postgres: <code>int</code>
+renders as <code>INTEGER</code>, because sqlglot's Redshift generator prints the long form.
+The two are the same type. <code>DECIMAL</code> renders as <code>NUMERIC</code> here as it does under
+Postgres, and <code>--decimal-style DECIMAL</code> brings it back.</p>
+<p><code>LISTAGG(…) WITHIN GROUP (ORDER BY …)</code> formats, with a space before the keyword's
+paren, the same family as <code>OVER (</code>:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect redshift listagg.sql
+SELECT customer_id
+     , LISTAGG(channel, ',') WITHIN GROUP (ORDER BY channel) AS channels
+FROM orders
+GROUP BY customer_id;
+</code></pre>
+<p>Redshift stored procedures use the same <code>$$</code> body machinery as Postgres:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect redshift proc.sql
+CREATE OR REPLACE PROCEDURE refresh_totals()
+LANGUAGE plpgsql
+AS $$
+
+DECLARE v_rows INT;
+
+BEGIN
+
+DELETE FROM daily_totals
+WHERE report_date = CURRENT_DATE;
+
+INSERT INTO daily_totals
+SELECT order_date
+     , SUM(total)
+FROM orders
+WHERE order_date = CURRENT_DATE
+GROUP BY order_date;
+
+END;
+$$;
+</code></pre>
+<h3 id="text-declines-and-why"><code>TEXT</code> declines, and why<a class="anchor" href="#text-declines-and-why" aria-label="Link to this section">#</a></h3>
+<p>Redshift <code>TEXT</code> is an alias for <code>VARCHAR(256)</code>. sqlglot renders it as
+<code>VARCHAR(MAX)</code>, which is <code>VARCHAR(65535)</code> — a different column width. That is a
+change to your schema, not to its presentation, so the safety net rejects it and
+the statement is passed through untouched:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect redshift table.sql
+sqlalign: table.sql: sqlglot cannot round-trip this statement, passed through unformatted: create table t (a text not null, b int);
+create table t (a text not null, b int);
+</code></pre>
+<p>This one is caught rather than declined on sight because <code>TEXT</code> and
+<code>VARCHAR(MAX)</code> parse to <em>different</em> AST nodes — the rewrite is visible to the
+comparison, so the general guarantee handles it. (Contrast the T-SQL type
+collapses below, which are not visible and need a separate guard.)</p>
+<p><code>CAST(x AS TEXT)</code> declines the same way. If you want those statements formatted,
+write the width you mean: <code>VARCHAR(256)</code>.</p>
+<h3 id="other-redshift-declines">Other Redshift declines<a class="anchor" href="#other-redshift-declines" aria-label="Link to this section">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Construct</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UNLOAD ('…') TO 's3://…'</code></td>
+<td><code>unsupported construct, passed through</code></td>
+</tr>
+<tr>
+<td>Python/Perl UDFs (<code>LANGUAGE plpythonu</code>)</td>
+<td><code>unsupported construct, passed through</code> — the body is not SQL</td>
+</tr>
+<tr>
+<td><code>TEXT</code> in a type position</td>
+<td><code>formatting would change semantics, passed through unformatted</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="sql-server-t-sql">SQL Server (T-SQL)<a class="anchor" href="#sql-server-t-sql" aria-label="Link to this section">#</a></h2>
+<p><code>--dialect tsql</code> covers ordinary queries and DDL, plus three T-SQL specifics:
+<code>TOP</code> with bracketed identifiers, <code>AS BEGIN … END</code> procedures, and <code>GO</code> batches.
+It is the newest and narrowest of the three — the declines below are longer than
+the other dialects' for that reason.</p>
+<h3 id="top-and-bracketed-identifiers"><code>TOP</code> and bracketed identifiers<a class="anchor" href="#top-and-bracketed-identifiers" aria-label="Link to this section">#</a></h3>
+<p><code>TOP n</code> rides the <code>SELECT</code> line; continuation commas keep their usual column, and
+<code>[bracketed]</code> identifiers are preserved verbatim like every other identifier:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql orders.sql
+SELECT TOP 10 [Order Id]
+     , cust.[Full Name]
+     , ord.total
+FROM [Sales Orders]  ord
+INNER JOIN customers cust ON cust.id = ord.customer_id
+WHERE ord.status = 'complete'
+  AND ord.total  &gt; 100
+ORDER BY ord.total DESC;
+</code></pre>
+<p>The statement splitter understands brackets, so a semicolon inside one
+(<code>[my;col]</code>) does not cut the statement in half, and <code>]]</code> escapes a literal
+bracket.</p>
+<p><code>TOP</code> is worth calling out because it is where the T-SQL support began. sqlglot
+parses <code>TOP n</code> into the same <code>Limit</code> node Postgres uses, so a dialect-agnostic
+layout handler emitted <code>LIMIT n</code> — valid SQL to sqlglot, rejected by SQL Server.
+See <a href="#adding-a-dialect-is-more-than-registering-a-parser">Adding a dialect</a>
+below.</p>
+<h3 id="create-table"><code>CREATE TABLE</code><a class="anchor" href="#create-table" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql daily_revenue.sql
+CREATE TABLE daily_revenue (
+    report_id   INTEGER      NOT NULL
+  , report_date DATE         NOT NULL
+  , channel     NVARCHAR(50) NOT NULL
+  , revenue     NUMERIC(12, 2)
+  , PRIMARY KEY (report_id)
+);
+</code></pre>
+<p>Two spelling changes in that output are worth knowing about, because both are
+sqlglot parse-time collapses that sqlalign cannot undo:</p>
+<table>
+<thead>
+<tr>
+<th>You wrote</th>
+<th>You get</th>
+<th>Why it is safe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>INTEGER</code></td>
+<td><code>INT</code> and <code>INTEGER</code> are the same type</td>
+</tr>
+<tr>
+<td><code>decimal(12,2)</code></td>
+<td><code>NUMERIC(12, 2)</code></td>
+<td>SQL Server treats <code>decimal</code> and <code>numeric</code> as synonyms</td>
+</tr>
+</tbody>
+</table>
+<p>Under <code>--dialect tsql</code>, <code>--decimal-style DECIMAL</code> does <strong>not</strong> bring <code>DECIMAL</code>
+back — the T-SQL generator has already printed <code>NUMERIC</code> before the knob is
+consulted. <code>--neq-style</code> does work under T-SQL. If preserving the <code>DECIMAL</code>
+spelling matters to you, put those statements behind <code>-- sqlalign: skip</code>.</p>
+<h3 id="begin-end-procedures"><code>BEGIN</code>/<code>END</code> procedures<a class="anchor" href="#begin-end-procedures" aria-label="Link to this section">#</a></h3>
+<p>A procedure body is ordinary T-SQL — there is no dollar quoting — so it goes
+through the main engine. Statements sit at column 1 inside the block, separated
+by blank lines:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql refresh_daily.sql
+CREATE PROCEDURE refresh_daily @target DATE
+AS
+BEGIN
+
+DELETE FROM daily_revenue
+WHERE report_date = @target;
+
+INSERT INTO daily_revenue
+(  report_date
+ , channel
+ , revenue)
+SELECT order_date
+     , channel
+     , SUM(total)
+FROM orders
+WHERE order_date = @target
+GROUP BY order_date
+       , channel;
+
+END;
+</code></pre>
+<p>The splitter keeps the whole routine as one statement rather than cutting at the
+semicolons inside it. It does that with a small stack that records what opened
+each block, so a <code>CASE … END</code> inside the body does not look like the end of the
+procedure, and <code>BEGIN TRANSACTION</code> — which never gets a matching <code>END</code> — does not
+open one.</p>
+<p>sqlalign closes the block with <code>END;</code> whichever way the source spells it — with
+or without a terminating semicolon:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql proc.sql
+CREATE PROCEDURE refresh_daily @target DATE
+AS
+BEGIN
+
+DELETE FROM daily_revenue
+WHERE report_date = @target;
+
+END;
+</code></pre>
+<p>A source that wrote <code>END;</code> used to decline here, which this guide described as a
+sharp edge. It was a bug, not an edge: the layout owns that semicolon, and the
+statement emitter appended the source's own on top of it, producing <code>END;;</code> —
+which re-parses differently, so the safety net stopped it. Fixed.</p>
+<h3 id="go-batches"><code>GO</code> batches<a class="anchor" href="#go-batches" aria-label="Link to this section">#</a></h3>
+<p><code>GO</code> is a client directive, not SQL. sqlglot cannot parse it, and worse, it
+swallows the following statement into the <code>GO</code> as a string literal. sqlalign
+splits the file at <code>GO</code> lines before anything is parsed, formats each batch
+independently, and passes the <code>GO</code> line through verbatim:</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql batches.sql
+TRUNCATE TABLE staging;
+GO
+INSERT INTO staging
+(  a
+ , b)
+SELECT a
+     , b
+FROM source
+WHERE a IS NOT NULL;
+GO
+</code></pre>
+<p>The safety check is batch-aware too: it compares each batch's AST separately and
+compares the separators themselves, so a dropped or added <code>GO</code> is still caught.
+<code>GO 5</code> (with a repeat count) is recognised.</p>
+<h3 id="real-and-ntext-decline-on-sight"><code>REAL</code> and <code>NTEXT</code> decline on sight<a class="anchor" href="#real-and-ntext-decline-on-sight" aria-label="Link to this section">#</a></h3>
+<p>These two are the reason T-SQL needs a guard the other dialects do not.</p>
+<pre><code class="language-console">$ sqlalign --stdout --dialect tsql types.sql
+sqlalign: types.sql: unsupported construct, passed through: create table t (a real not null, b int);
+sqlalign: types.sql: unsupported construct, passed through: select cast(x as ntext) from t;
+create table t (a real not null, b int);
+select cast(x as ntext) from t;
+</code></pre>
+<p>sqlglot collapses <code>REAL</code>/<code>FLOAT</code> to one node, and <code>NTEXT</code>/<code>TEXT</code> to one node, <strong>at
+parse time</strong>. In T-SQL those pairs are not synonyms:</p>
+<table>
+<thead>
+<tr>
+<th>Pair</th>
+<th>Difference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REAL</code> vs <code>FLOAT</code></td>
+<td><code>REAL</code> is <code>FLOAT(24)</code>, <code>FLOAT</code> is <code>FLOAT(53)</code> — rewriting one widens precision</td>
+</tr>
+<tr>
+<td><code>NTEXT</code> vs <code>TEXT</code></td>
+<td><code>NTEXT</code> is Unicode, <code>TEXT</code> is not</td>
+</tr>
+</tbody>
+</table>
+<p>The AST safety net is useless here, and not because it is weak: the distinction is
+destroyed <em>before the AST exists</em>, so both sides of the comparison collapse the
+same way and <code>ast_equal</code> returns <code>True</code> on a rewrite that changed your schema.
+The only defence left is the raw source, so a statement whose text contains <code>REAL</code>
+or <code>NTEXT</code> under <code>--dialect tsql</code> is declined by a regex over the input before any
+layout runs.</p>
+<p><code>INT</code>/<code>INTEGER</code>, <code>DECIMAL</code>/<code>NUMERIC</code> and <code>TIMESTAMP</code>/<code>ROWVERSION</code> also collapse,
+but those <em>are</em> synonyms, so canonicalising them is harmless and they still
+format.</p>
+<h3 id="other-t-sql-declines">Other T-SQL declines<a class="anchor" href="#other-t-sql-declines" aria-label="Link to this section">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Construct</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IF</code>/<code>WHILE</code> inside a procedure body</td>
+<td>sqlglot does not parse it — part of the body comes back as raw text, and an <code>IF … ELSE</code> is indistinguishable from an <code>IF</code> without one, so laying out the tree would drop the ELSE</td>
+</tr>
+<tr>
+<td><code>TRY</code>/<code>CATCH</code> blocks</td>
+<td><code>create procedure q as begin begin try … end try begin catch … end catch end</code></td>
+</tr>
+<tr>
+<td><code>REAL</code>, <code>NTEXT</code> in a type position</td>
+<td>see above</td>
+</tr>
+</tbody>
+</table>
+<p>All of these pass through byte-identical with a warning and exit code <code>0</code>.
+Procedure bodies containing only DML and <code>SELECT</code> format; a body containing
+control flow declines as a whole.</p>
+<h2 id="adding-a-dialect-is-more-than-registering-a-parser">Adding a dialect is more than registering a parser<a class="anchor" href="#adding-a-dialect-is-more-than-registering-a-parser" aria-label="Link to this section">#</a></h2>
+<p><code>SUPPORTED_DIALECTS</code> is a whitelist of three, and it is not the list of dialects
+sqlglot can parse — sqlglot parses many more. It is the list whose <em>emitted
+keywords</em> have been audited against a real engine.</p>
+<p>The distinction is not theoretical. It shipped once. The chain:</p>
+<ol>
+<li>sqlglot parses T-SQL <code>SELECT TOP 10 id FROM users</code> into the same <code>Limit</code> node
+it uses for Postgres <code>LIMIT 10</code>.</li>
+<li>The layout handler emitted its hard-coded <code>LIMIT</code> keyword. Handlers are
+dialect-agnostic, which is true for Postgres and Redshift — they share the
+syntax — and false for SQL Server.</li>
+<li>sqlglot then parsed that <code>LIMIT</code> back <em>as T-SQL</em>, because its grammar accepts
+it, so <code>ast_equal</code> compared the two trees <strong>equal</strong> and reported nothing.</li>
+</ol>
+<p>Valid SQL in, SQL Server rejects the output, no warning. Two of the twenty-six
+keywords the handlers emit diverge for T-SQL (<code>LIMIT</code> and <code>OFFSET</code>); finding that
+out required going through them.</p>
+<p>The lesson generalises, and it is the one real limit on sqlalign's guarantee:
+<strong>the AST safety net cannot detect dialect-invalid output.</strong> The round trip never
+leaves sqlglot's permissive grammar, so a keyword that is valid to sqlglot and
+invalid to your engine is invisible to the comparison. &quot;sqlalign cannot change
+what your SQL means&quot; holds <em>within</em> a verified dialect.</p>
+<p>That is why <code>format_sql</code> raises for an unlisted dialect instead of doing its best.
+A passthrough would be the wrong response — an unsupported dialect is a caller
+error, not an unmodelled statement, so it fails where you can see it rather than
+silently mid-file.</p>
+<p>If you want a fourth dialect, the work is: audit every keyword the layout
+handlers emit against that engine's grammar, hunt for parse-time collapses whose
+two spellings are not synonyms (the <code>REAL</code>/<code>NTEXT</code> class), and add byte-exact
+golden fixtures pinning the result. Registering the parser is the easy part.</p>
+<h2 id="see-also">See also<a class="anchor" href="#see-also" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="configuration.html">Configuration</a> — the config keys, and why <code>dialect</code> is not one</li>
+<li><a href="cli.html">Command-line reference</a> — every flag and the exit codes</li>
+<li><a href="architecture.html">Architecture</a> — the safety model and the decline contract in full</li>
+<li><a href="faq.html">FAQ</a> — why a statement did not get formatted, and what to do about it</li>
+</ul>
+</main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#postgres">Postgres</a><a class="lvl3" href="#dollar-quoted-bodies">Dollar-quoted bodies</a><a class="lvl3" href="#what-postgres-declines">What Postgres declines</a><a class="lvl2" href="#redshift">Redshift</a><a class="lvl3" href="#text-declines-and-why">TEXT declines, and why</a><a class="lvl3" href="#other-redshift-declines">Other Redshift declines</a><a class="lvl2" href="#sql-server-t-sql">SQL Server (T-SQL)</a><a class="lvl3" href="#top-and-bracketed-identifiers">TOP and bracketed identifiers</a><a class="lvl3" href="#create-table">CREATE TABLE</a><a class="lvl3" href="#begin-end-procedures">BEGIN/END procedures</a><a class="lvl3" href="#go-batches">GO batches</a><a class="lvl3" href="#real-and-ntext-decline-on-sight">REAL and NTEXT decline on sight</a><a class="lvl3" href="#other-t-sql-declines">Other T-SQL declines</a><a class="lvl2" href="#adding-a-dialect-is-more-than-registering-a-parser">Adding a dialect is more than registering a parser</a><a class="lvl2" href="#see-also">See also</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

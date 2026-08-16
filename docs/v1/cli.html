@@ -1,0 +1,850 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI reference — sqlalign docs</title>
+<meta name="description" content="CLI reference — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html">Settings reference</a>
+<a href="style.html">The house style</a>
+<a href="cli.html" class='here'>CLI reference</a>
+<a href="dialects.html">Dialects</a>
+<a href="architecture.html">Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><h2 id="all-flags">All flags<a class="anchor" href="#all-flags">#</a></h2><p>Generated from the parser, so it cannot fall behind it. The sections below explain the ones that need more than a line.</p><table><thead><tr><th>Flag</th><th>Description</th></tr></thead><tbody><tr><td><code>-h</code>, <code>--help</code></td><td>show this help message and exit</td></tr><tr><td><code>--version</code></td><td>print the version and exit</td></tr><tr><td><code>--check</code></td><td>do not write; exit 1 if any file would change</td></tr><tr><td><code>--stdout</code></td><td>write the result to stdout instead of the file</td></tr><tr><td><code>--diff</code></td><td>write nothing; print a unified diff of what would change (exit 1 if anything would)</td></tr><tr><td><code>--dialect</code> <code>postgres</code>, <code>redshift</code>, <code>tsql</code></td><td>the SQL dialect to parse and print (default: postgres)</td></tr><tr><td><code>--line-ending</code> <code>auto</code>, <code>lf</code>, <code>crlf</code></td><td>line endings to write: auto preserves the file's own (default)</td></tr><tr><td><code>--config</code></td><td>use this config file instead of discovering one</td></tr><tr><td><code>--exclude</code></td><td>skip files matching this glob when expanding a directory (repeatable; also settable as <code>exclude</code> in a config file)</td></tr><tr><td><code>--isolated</code></td><td>ignore any config file and use the built-in defaults</td></tr><tr><td><code>--show-config</code></td><td>print the effective settings as TOML and exit</td></tr><tr><td><code>--gui</code></td><td>(experimental) open the settings panel with a live preview, and exit</td></tr><tr><td><code>--report</code></td><td>print a coverage summary: how many statements were formatted, and what the rest declined on</td></tr><tr><td><code>--max-declines</code></td><td>exit 1 if more than N statements are passed through unformatted (implies --report)</td></tr><tr><td><code>--lint</code></td><td>after formatting, run sqlfluff over the result (needs the optional <code>sqlalign[lint]</code> extra)</td></tr><tr><td><code>--print-sqlfluff-config</code></td><td>print a .sqlfluff that lets sqlfluff run alongside sqlalign without fighting it, and exit</td></tr><tr><td><code>--no-strict-config</code></td><td>warn on unknown config keys instead of failing</td></tr><tr><td><code>--preset</code> <code>compact</code>, <code>dbt</code>, <code>gitlab</code>, <code>house</code>, <code>river</code>, <code>trailing</code></td><td>named starting point; config keys and flags layer on top</td></tr><tr><td><code>--width</code></td><td>column the formatter tries to stay inside; 0 turns it off</td></tr><tr><td><code>--blank-lines-between-statements</code></td><td>force N blank lines between every pair of statements (default: one only between two multi-line statements)</td></tr><tr><td><code>--no-align</code></td><td>emit one space between tokens instead of aligning them into columns (same line structure, no padding)</td></tr><tr><td><code>--no-protect-templating</code></td><td>do not mask Jinja/dbt template expressions before formatting</td></tr><tr><td><code>--no-format-bodies</code></td><td>leave dollar-quoted ($$) procedure and function bodies untouched</td></tr><tr><td><code>--align-targets</code></td><td>comma-separated alignment targets to keep. Default is every target except table_names, which is opt-in because it pads the FROM/JOIN keyword out to a shared table column. Valid: aliases, table_names, operators, join_conditions, case_results, column_types, column_constraints</td></tr><tr><td><code>--comma-position</code> <code>leading</code>, <code>trailing</code></td><td>where the separator comma sits in a stacked list (default: leading)</td></tr><tr><td><code>--boolean-operator-position</code> <code>leading</code>, <code>trailing</code></td><td>where AND/OR sit when a predicate spans lines (default: leading)</td></tr><tr><td><code>--on-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether a JOIN ON rides the table line or drops below it</td></tr><tr><td><code>--select-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether the first select item rides the SELECT line</td></tr><tr><td><code>--select-indent</code></td><td>columns the select list indents under --select-placement own_line (default: 2)</td></tr><tr><td><code>--body-blank-lines</code></td><td>blank lines between the elements of a $$ body (default: 1)</td></tr><tr><td><code>--clause-keyword-align</code> <code>left</code>, <code>river</code></td><td>root clause keywords flush left, or right-aligned to a river</td></tr><tr><td><code>--river-gutter</code></td><td>column a river right-aligns clause keywords to (default: 6)</td></tr><tr><td><code>--keyword-case</code> <code>upper</code>, <code>lower</code></td><td>case for keywords, function names and types (default: upper)</td></tr><tr><td><code>--neq-style</code> <code>!=</code>, <code><></code></td><td>spelling for the not-equal operator (default: !=)</td></tr><tr><td><code>--table-alias-style</code> <code>bare</code>, <code>as</code></td><td>print a table alias as <code>t a</code> (bare) or <code>t AS a</code></td></tr><tr><td><code>--decimal-style</code> <code>NUMERIC</code>, <code>DECIMAL</code></td><td>spelling for the NUMERIC/DECIMAL type (default: NUMERIC)</td></tr></tbody></table><pre><code>sqlalign [OPTIONS] FILE_OR_DIRECTORY...
+</code></pre>
+<p>Every flag below is the complete set — this page is written against
+<code>sqlalign --help</code> and nothing is omitted. New to the tool? Start with
+<a href="getting-started.html">Getting started</a>; this page is for looking things up. For
+committing these settings to a config file rather than typing them, see
+<a href="configuration.html">Configuration</a>.</p>
+<p>Defaults marked <em>(house)</em> are what you get with no config file and no flags.</p>
+<h2 id="positional-arguments">Positional arguments<a class="anchor" href="#positional-arguments" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files …</code></td>
+<td>required</td>
+<td>One or more files or directories. A <strong>directory</strong> is searched recursively for <code>*.sql</code>, in sorted order so a run is reproducible. At least one path is required, including with <code>--show-config</code>.</td>
+</tr>
+<tr>
+<td><code>-h</code>, <code>--help</code></td>
+<td>—</td>
+<td>Print the usage summary and exit.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no stdin mode and <code>-</code> is not special, but <code>/dev/stdin</code> works as a path
+— with the caveat that config discovery then walks up from <code>/dev</code>, not your
+repo, so pair it with <code>--config</code>.</p>
+<h2 id="output-mode">Output mode<a class="anchor" href="#output-mode" aria-label="Link to this section">#</a></h2>
+<p>By default sqlalign <strong>rewrites each file in place</strong> and prints nothing. These
+flags change that.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--check</code></td>
+<td>off</td>
+<td>Write nothing. Print <code>would reformat &lt;path&gt;</code> for each file that is not already formatted. Exit <code>1</code> if any is.</td>
+</tr>
+<tr>
+<td><code>--stdout</code></td>
+<td>off</td>
+<td>Write the formatted result to stdout instead of rewriting the file. Exit <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>--diff</code></td>
+<td>off</td>
+<td>Write nothing. Print a unified diff of what would change. Exit <code>1</code> if anything would.</td>
+</tr>
+<tr>
+<td><code>--line-ending {auto,lf,crlf}</code></td>
+<td><code>auto</code></td>
+<td>Line endings to write. <code>auto</code> preserves each file's own — a CRLF file stays CRLF, and an already-formatted CRLF file does not report a spurious diff.</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>--check</code>, <code>--stdout</code> and <code>--diff</code> are mutually exclusive.</strong> Passing two is an
+argument error, not a silent precedence rule:</p>
+<pre><code>sqlalign: error: argument --stdout: not allowed with argument --check
+</code></pre>
+<p>A file with lone <code>\r</code> (classic-Mac) line endings is not a shape sqlalign models;
+it is passed through untouched with a warning.</p>
+<h2 id="file-selection">File selection<a class="anchor" href="#file-selection" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--exclude GLOB</code></td>
+<td>none</td>
+<td>Skip files matching this glob <strong>when expanding a directory</strong>. Repeatable. Matched against the path relative to the directory you named (posix separators, <code>fnmatch</code> semantics) and against the bare filename. Also settable as <code>exclude</code> in a config file.</td>
+</tr>
+</tbody>
+</table>
+<p>A file you name explicitly on the command line is <strong>never</strong> excluded — naming it
+is a clearer signal of intent than a pattern in a config file.</p>
+<p>Exclusions are resolved per directory argument, before per-file style
+resolution, from <code>--exclude</code> plus the <code>exclude</code> key of the config discovered at
+that directory.</p>
+<h2 id="configuration">Configuration<a class="anchor" href="#configuration" aria-label="Link to this section">#</a></h2>
+<p>sqlalign reads a <code>.sqlalign.toml</code>, or a <code>[tool.sqlalign]</code> table in a
+<code>pyproject.toml</code>, discovered by walking up from each file being formatted.
+Precedence is <strong>built-in defaults → preset → config file → command-line flags</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config PATH</code></td>
+<td>discovered</td>
+<td>Use this config file instead of discovering one.</td>
+</tr>
+<tr>
+<td><code>--isolated</code></td>
+<td>off</td>
+<td>Ignore any config file and use the built-in defaults.</td>
+</tr>
+<tr>
+<td><code>--show-config</code></td>
+<td>off</td>
+<td>Print the effective settings as TOML and exit <code>0</code>. Formats nothing. The first line is the config file they came from, or <code># built-in defaults (no config file found)</code>.</td>
+</tr>
+<tr>
+<td><code>--no-strict-config</code></td>
+<td>off</td>
+<td>Warn on unknown config keys instead of failing. By default an unknown key is a hard <strong>error</strong> (exit <code>2</code>) — a typo in a committed config would otherwise mean a team believes it has a setting it does not have.</td>
+</tr>
+<tr>
+<td><code>--dialect {postgres,redshift,tsql}</code></td>
+<td><code>postgres</code></td>
+<td>Dialect to parse and emit. <strong>CLI only</strong> — there is no <code>dialect</code> config key.</td>
+</tr>
+</tbody>
+</table>
+<p><code>--show-config</code> resolves the config against the <strong>first</strong> path you give it, so
+in a repo with per-directory configs, ask about the directory you care about.
+Its output is valid TOML you can paste straight into a config file:</p>
+<pre><code class="language-sh">sqlalign --show-config .
+</code></pre>
+<pre><code class="language-toml"># built-in defaults (no config file found)
+width = 100
+align = true
+align_targets = [&quot;aliases&quot;, &quot;case_results&quot;, &quot;column_aliases&quot;, &quot;column_constraints&quot;, &quot;column_types&quot;, &quot;join_conditions&quot;, &quot;operators&quot;, &quot;table_aliases&quot;]
+comma_position = &quot;leading&quot;
+boolean_operator_position = &quot;leading&quot;
+on_placement = &quot;inline&quot;
+select_placement = &quot;inline&quot;
+select_indent = 2
+clause_keyword_align = &quot;left&quot;
+river_gutter = 6
+format_dollar_bodies = true
+neq_style = &quot;!=&quot;
+decimal_style = &quot;NUMERIC&quot;
+table_alias_style = &quot;bare&quot;
+keyword_case = &quot;upper&quot;
+protect_templating = true
+# blank_lines_between_statements is unset: one blank line between two
+# multi-line statements, none otherwise. Set an integer to force a count.
+</code></pre>
+<h3 id="valid-config-keys">Valid config keys<a class="anchor" href="#valid-config-keys" aria-label="Link to this section">#</a></h3>
+<p>Every key below is accepted in <code>.sqlalign.toml</code> or <code>[tool.sqlalign]</code>. Anything
+else is an error unless you pass <code>--no-strict-config</code>.</p>
+<p><code>align</code> · <code>align_targets</code> · <code>blank_lines_between_statements</code> ·
+<code>boolean_operator_position</code> · <code>clause_keyword_align</code> · <code>comma_position</code> ·
+<code>decimal_style</code> · <code>exclude</code> · <code>format_dollar_bodies</code> · <code>keyword_case</code> ·
+<code>neq_style</code> · <code>on_placement</code> · <code>preset</code> · <code>protect_templating</code> · <code>river_gutter</code> ·
+<code>select_indent</code> · <code>select_placement</code> · <code>table_alias_style</code> · <code>width</code></p>
+<p><code>--dialect</code> and <code>--line-ending</code> are the only settings with no config key. The
+three <code>--no-*</code> flags map onto the positive keys: <code>--no-align</code> is <code>align = false</code>,
+<code>--no-protect-templating</code> is <code>protect_templating = false</code>, <code>--no-format-bodies</code>
+is <code>format_dollar_bodies = false</code>.</p>
+<h2 id="style">Style<a class="anchor" href="#style" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--preset {compact,dbt,house,trailing}</code></td>
+<td>none (the <code>house</code> defaults)</td>
+<td>Named starting point. Sets a <strong>base</strong> that config keys and flags then layer on top of, so <code>--preset compact --comma-position trailing</code> means both. Not passing it leaves any <code>preset</code> key in your config file in force.</td>
+</tr>
+<tr>
+<td><code>--width WIDTH</code></td>
+<td><code>100</code></td>
+<td>Target line width for wrapping decisions. Not a hard cap: a construct anchored deep in an indent gets a floor of <code>anchor + 60</code>, plus 5 characters of grace, so alignment is never sacrificed to shave two columns.</td>
+</tr>
+<tr>
+<td><code>--blank-lines-between-statements N</code></td>
+<td>unset</td>
+<td>Force N blank lines between every pair of statements. Unset is the house rule: exactly one blank line between two <strong>multi-line</strong> statements and none otherwise, so a run of one-line <code>GRANT</code>s stays a block. <code>0</code> removes them all.</td>
+</tr>
+<tr>
+<td><code>--no-align</code></td>
+<td>off <em>(aligned)</em></td>
+<td>Emit one space between tokens instead of padding them into columns. Same line structure, no padding — this is what 9 of 10 published SQL style guides call for.</td>
+</tr>
+<tr>
+<td><code>--align-targets a,b,…</code></td>
+<td>all six</td>
+<td>Comma-separated alignment columns to keep. Anything left out collapses to a single space. See the table below.</td>
+</tr>
+<tr>
+<td><code>--comma-position {leading,trailing}</code></td>
+<td><code>leading</code> <em>(house)</em></td>
+<td>Where the separator comma sits in a stacked list — select items, <code>GROUP BY</code>/<code>ORDER BY</code> terms, <code>INSERT</code> columns, <code>UPDATE SET</code> assignments, <code>CREATE TABLE</code> columns, window terms.</td>
+</tr>
+<tr>
+<td><code>--boolean-operator-position {leading,trailing}</code></td>
+<td><code>leading</code> <em>(house)</em></td>
+<td>Where <code>AND</code>/<code>OR</code> sit when a predicate spans lines. The condition column is identical either way — only the operator moves.</td>
+</tr>
+<tr>
+<td><code>--on-placement {inline,own_line}</code></td>
+<td><code>inline</code> <em>(house)</em></td>
+<td>Whether a <code>JOIN</code>'s <code>ON</code> rides the table line or drops below it. <strong><code>own_line</code> retires the FROM-block-wide <code>ON</code> column</strong> — there is no longer an <code>ON</code> after each alias to align — so <code>join_conditions</code> has nothing to act on.</td>
+</tr>
+<tr>
+<td><code>--keyword-case {upper,lower}</code></td>
+<td><code>upper</code> <em>(house)</em></td>
+<td>Case for keywords, function names and type names. Your identifiers and string literals are never touched.</td>
+</tr>
+<tr>
+<td><code>--neq-style {!=,&lt;&gt;}</code></td>
+<td><code>!=</code></td>
+<td>Spelling for the not-equal operator.</td>
+</tr>
+<tr>
+<td><code>--decimal-style {NUMERIC,DECIMAL}</code></td>
+<td><code>NUMERIC</code></td>
+<td>Spelling for the <code>NUMERIC</code>/<code>DECIMAL</code> type.</td>
+</tr>
+<tr>
+<td><code>--no-protect-templating</code></td>
+<td>off <em>(protected)</em></td>
+<td>Do not mask Jinja/dbt template expressions (<code>{{ … }}</code>, <code>{% … %}</code>, <code>{# … #}</code>) before formatting. With protection on, each expression becomes a same-width placeholder, so alignment is computed against the real text width.</td>
+</tr>
+<tr>
+<td><code>--no-format-bodies</code></td>
+<td>off <em>(formatted)</em></td>
+<td>Leave dollar-quoted (<code>$$</code>) procedure and function bodies untouched. On by default; off passes the whole <code>CREATE FUNCTION</code>/<code>PROCEDURE</code> through byte-identical.</td>
+</tr>
+</tbody>
+</table>
+<p><code>--neq-style</code> and <code>--decimal-style</code> exist because sqlglot's parser collapses each
+of those pairs into a single AST node, so a spelling has to be chosen when
+printing. They are the only two places sqlalign picks for you.</p>
+<h3 id="presets">Presets<a class="anchor" href="#presets" aria-label="Link to this section">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>house</code></td>
+<td>nothing — the built-in columnar default: aligned, leading separators, <code>ON</code> inline, uppercase keywords</td>
+</tr>
+<tr>
+<td><code>compact</code></td>
+<td><code>align = false</code></td>
+</tr>
+<tr>
+<td><code>trailing</code></td>
+<td><code>comma_position = &quot;trailing&quot;</code>, <code>boolean_operator_position = &quot;trailing&quot;</code></td>
+</tr>
+<tr>
+<td><code>dbt</code></td>
+<td><code>keyword_case = &quot;lower&quot;</code>, <code>comma_position = &quot;trailing&quot;</code>, <code>align = false</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>dbt</code> ships with its one remaining deviation stated: dbt indents nested blocks 4,
+sqlalign indents a CTE body 2.</p>
+<h3 id="alignment-targets">Alignment targets<a class="anchor" href="#alignment-targets" aria-label="Link to this section">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Aligns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aliases</code></td>
+<td><code>AS x</code> in a select list, and table aliases in <code>FROM</code>/<code>JOIN</code></td>
+</tr>
+<tr>
+<td><code>operators</code></td>
+<td><code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>LIKE</code>, <code>IS</code> … in <code>WHERE</code>/<code>ON</code>/<code>HAVING</code>/<code>CASE</code></td>
+</tr>
+<tr>
+<td><code>join_conditions</code></td>
+<td>the <code>ON</code>/<code>AND</code> column across a whole <code>FROM</code> block</td>
+</tr>
+<tr>
+<td><code>case_results</code></td>
+<td><code>THEN</code> in a short-form <code>CASE</code></td>
+</tr>
+<tr>
+<td><code>column_types</code></td>
+<td>column types in <code>CREATE TABLE</code></td>
+</tr>
+<tr>
+<td><code>column_constraints</code></td>
+<td><code>NOT NULL</code>/<code>DEFAULT</code>, and Redshift <code>ENCODE</code></td>
+</tr>
+</tbody>
+</table>
+<p>An unknown name is an error, not a silent no-op:</p>
+<pre><code>sqlalign: unknown align_targets ['alias']; valid: ['aliases', 'case_results', 'column_constraints', 'column_types', 'join_conditions', 'operators']
+</code></pre>
+<p><code>--no-align</code> is the shorthand for switching all six off.</p>
+<h2 id="exit-codes">Exit codes<a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success, including <code>--check</code>/<code>--diff</code> finding nothing to change, and including statements that passed through untouched with a warning.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>--check</code> or <code>--diff</code> found at least one file that would change. No other mode returns <code>1</code>.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Unreadable file, invalid config file, invalid argument, or an unexpected engine error on one file.</td>
+</tr>
+</tbody>
+</table>
+<p>Per-file failures do not abort the run: the file is reported on stderr and
+skipped, the rest still process, and the worst code seen is returned.</p>
+<pre><code class="language-sh">sqlalign --check nope.sql still.sql
+# sqlalign: [Errno 2] No such file or directory: 'nope.sql'
+# would reformat still.sql
+# exit 2
+</code></pre>
+<h2 id="worked-invocations">Worked invocations<a class="anchor" href="#worked-invocations" aria-label="Link to this section">#</a></h2>
+<p>Each block below is real output. The input for the style examples is
+<code>tests/fixtures/input/13.sql</code>; the default rendering of it is in the
+<a href="https://github.com/pua2/sqlalign/blob/main/README.md">README</a>.</p>
+<h3 id="adopt-the-line-structure-without-the-padding">Adopt the line structure without the padding<a class="anchor" href="#adopt-the-line-structure-without-the-padding" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-sh">sqlalign --stdout --no-align 13.sql
+</code></pre>
+<pre><code class="language-sql">-- #13: multi-character aliases (mixed lengths)
+SELECT cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+FROM customers cust
+INNER JOIN orders ord ON ord.customer_id = cust.customer_id
+LEFT JOIN order_line_items line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
+  AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment = 'enterprise';
+</code></pre>
+<h3 id="keep-the-alignment-move-the-separators-to-end-of-line">Keep the alignment, move the separators to end of line<a class="anchor" href="#keep-the-alignment-move-the-separators-to-end-of-line" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-sh">sqlalign --stdout --preset trailing 13.sql
+</code></pre>
+<pre><code class="language-sql">-- #13: multi-character aliases (mixed lengths)
+SELECT cust.customer_id,
+       cust.email,
+       ord.order_id,
+       ord.total,
+       line_items.product_id,
+       line_items.quantity,
+       addr.city
+FROM customers               cust
+INNER JOIN orders            ord        ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr       ON addr.order_id       = ord.order_id AND
+                                           addr.address_type   = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01' AND
+      cust.segment    = 'enterprise';
+</code></pre>
+<h3 id="drop-on-to-its-own-line">Drop <code>ON</code> to its own line<a class="anchor" href="#drop-on-to-its-own-line" aria-label="Link to this section">#</a></h3>
+<p>Note what this costs: the <code>ON</code> conditions are now justified within each join
+instead of into one column spanning the whole <code>FROM</code> block.</p>
+<pre><code class="language-sh">sqlalign --stdout --on-placement own_line 13.sql
+</code></pre>
+<pre><code class="language-sql">-- #13: multi-character aliases (mixed lengths)
+SELECT cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+FROM customers               cust
+INNER JOIN orders            ord
+   ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items
+   ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr
+   ON addr.order_id       = ord.order_id
+  AND addr.address_type   = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<h3 id="lowercase-everything">Lowercase everything<a class="anchor" href="#lowercase-everything" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-sh">sqlalign --stdout --keyword-case lower 13.sql
+</code></pre>
+<pre><code class="language-sql">-- #13: multi-character aliases (mixed lengths)
+select cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+from customers               cust
+inner join orders            ord        on ord.customer_id     = cust.customer_id
+left join order_line_items   line_items on line_items.order_id = ord.order_id
+left join shipping_addresses addr       on addr.order_id       = ord.order_id
+                                       and addr.address_type   = 'shipping'
+where ord.order_date &gt;= '2026-07-01'
+  and cust.segment    = 'enterprise';
+</code></pre>
+<p>Identifiers and string literals are untouched — the pass is AST-driven.</p>
+<h3 id="format-a-dbt-model">Format a dbt model<a class="anchor" href="#format-a-dbt-model" aria-label="Link to this section">#</a></h3>
+<p><code>--preset dbt</code> is <code>keyword_case = &quot;lower&quot;</code> + trailing commas + no padding.
+Jinja survives because it is masked with same-width placeholders before parsing.</p>
+<pre><code class="language-sh">sqlalign --stdout --preset dbt orders.sql
+</code></pre>
+<pre><code class="language-sql">select o.id,
+       o.total,
+       c.email
+from {{ ref('orders') }} o
+join {{ ref('customers') }} c on c.id = o.customer_id
+where o.status = 'complete';
+</code></pre>
+<h3 id="give-a-long-window-function-room">Give a long window function room<a class="anchor" href="#give-a-long-window-function-room" aria-label="Link to this section">#</a></h3>
+<p><code>--width</code> moves the wrapping threshold. Same query, two widths:</p>
+<pre><code class="language-sh">sqlalign --stdout wide.sql            # default width 100
+</code></pre>
+<pre><code class="language-sql">SELECT customer_id
+     , SUM(total) OVER (PARTITION BY customer_id ORDER BY order_date
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM orders;
+</code></pre>
+<pre><code class="language-sh">sqlalign --stdout --width 200 wide.sql
+</code></pre>
+<pre><code class="language-sql">SELECT customer_id
+     , SUM(total) OVER (PARTITION BY customer_id ORDER BY order_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM orders;
+</code></pre>
+<p>Lowering <code>--width</code> below the default often changes nothing, because the
+<code>anchor + 60</code> floor keeps a deeply-indented construct readable regardless.</p>
+<h3 id="space-out-a-migration-script">Space out a migration script<a class="anchor" href="#space-out-a-migration-script" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-sh">sqlalign --stdout --blank-lines-between-statements 1 multi.sql
+</code></pre>
+<pre><code class="language-sql">TRUNCATE TABLE staging_orders;
+
+TRUNCATE TABLE staging_customers;
+
+SELECT a
+     , b
+FROM t
+WHERE a = 1
+  AND b = 2;
+
+SELECT c
+FROM u;
+</code></pre>
+<p>With the flag unset, the two <code>TRUNCATE</code>s stay packed together and only the
+multi-line statements get air:</p>
+<pre><code class="language-sql">TRUNCATE TABLE staging_orders;
+TRUNCATE TABLE staging_customers;
+SELECT a
+     , b
+FROM t
+WHERE a = 1
+  AND b = 2;
+
+SELECT c
+FROM u;
+</code></pre>
+<h3 id="gate-a-repository-in-ci">Gate a repository in CI<a class="anchor" href="#gate-a-repository-in-ci" aria-label="Link to this section">#</a></h3>
+<pre><code class="language-sh">sqlalign --check --exclude 'vendor/*' --exclude '*.gen.sql' .
+</code></pre>
+<pre><code>would reformat models/marts/rollup.sql
+would reformat models/users.sql
+</code></pre>
+<p>Exit <code>1</code>. Swap <code>--check</code> for <code>--diff</code> when you want the log to show the change
+rather than only the filename.</p>
+</main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#all-flags">All flags</a><a class="lvl2" href="#positional-arguments">Positional arguments</a><a class="lvl2" href="#output-mode">Output mode</a><a class="lvl2" href="#file-selection">File selection</a><a class="lvl2" href="#configuration">Configuration</a><a class="lvl3" href="#valid-config-keys">Valid config keys</a><a class="lvl2" href="#style">Style</a><a class="lvl3" href="#presets">Presets</a><a class="lvl3" href="#alignment-targets">Alignment targets</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#worked-invocations">Worked invocations</a><a class="lvl3" href="#adopt-the-line-structure-without-the-padding">Adopt the line structure without the padding</a><a class="lvl3" href="#keep-the-alignment-move-the-separators-to-end-of-line">Keep the alignment, move the separators to end of line</a><a class="lvl3" href="#drop-on-to-its-own-line">Drop ON to its own line</a><a class="lvl3" href="#lowercase-everything">Lowercase everything</a><a class="lvl3" href="#format-a-dbt-model">Format a dbt model</a><a class="lvl3" href="#give-a-long-window-function-room">Give a long window function room</a><a class="lvl3" href="#space-out-a-migration-script">Space out a migration script</a><a class="lvl3" href="#gate-a-repository-in-ci">Gate a repository in CI</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

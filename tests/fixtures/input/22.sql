@@ -1,0 +1,2 @@
+-- #22: merge (upsert from staging)
+merge into daily_revenue tgt using staging_daily_revenue src on tgt.report_date = src.report_date and tgt.channel = src.channel when matched then update set revenue = src.revenue, order_count = src.order_count, updated_at = current_timestamp when not matched then insert (report_date, channel, revenue, order_count) values (src.report_date, src.channel, src.revenue, src.order_count);

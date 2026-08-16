@@ -1,0 +1,1212 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The house style — sqlalign docs</title>
+<meta name="description" content="The house style — sqlalign, a SQL
+formatter that cannot change what your SQL means.">
+<style>/* Shared chrome for every generated docs page. The palette is lifted from
+   docs/index.html so the site reads as one product rather than two. */
+:root {
+  --paper:#F6F7F9; --paper-sunk:#ECEFF3; --paper-raise:#FFFFFF;
+  --rule:#D3DAE2; --ink:#12171C; --ink-soft:#4A555F; --ink-faint:#78838D;
+  --accent:#2B5C8A; --accent-soft:#E3ECF4; --guide:#B8802A; --ok:#2F6B4F;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --side: 15rem; --toc: 14rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+    --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+    --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1216; --paper-sunk:#161C22; --paper-raise:#141A20;
+  --rule:#28323B; --ink:#E7ECF1; --ink-soft:#A5B1BC; --ink-faint:#74818C;
+  --accent:#7FB2E0; --accent-soft:#17242F; --guide:#D6A24A; --ok:#6FBF95;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:1rem; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+.skip { position:absolute; left:-9999px; }
+.skip:focus { left:.5rem; top:.5rem; background:var(--paper-raise); padding:.5rem .75rem;
+  border:1px solid var(--rule); border-radius:6px; z-index:20; }
+
+/* ---- header ---- */
+.top {
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:.75rem;
+  padding:.6rem 1rem; background:var(--paper); border-bottom:1px solid var(--rule);
+}
+.brand { font-weight:650; letter-spacing:-.01em; color:var(--ink); }
+.top .version {
+  font:inherit; font-size:.82rem; color:var(--ink-soft); background:var(--paper-sunk);
+  border:1px solid var(--rule); border-radius:6px; padding:.2rem .4rem;
+}
+.top .ext, .top #theme {
+  font:inherit; font-size:.86rem; color:var(--ink-soft); background:none;
+  border:1px solid var(--rule); border-radius:6px; padding:.25rem .55rem; cursor:pointer;
+}
+.search { position:relative; flex:1; max-width:26rem; margin-left:auto; }
+#q {
+  width:100%; font:inherit; font-size:.9rem; padding:.35rem .6rem; color:var(--ink);
+  background:var(--paper-sunk); border:1px solid var(--rule); border-radius:6px;
+}
+#results {
+  position:absolute; top:calc(100% + .3rem); left:0; right:0; max-height:60vh; overflow:auto;
+  background:var(--paper-raise); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14); padding:.25rem;
+}
+#results a { display:block; padding:.4rem .55rem; border-radius:5px; color:var(--ink); }
+#results a:hover, #results a.on { background:var(--accent-soft); text-decoration:none; }
+#results .r-page { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+#results .r-hit { font-size:.85rem; color:var(--ink-soft); }
+#results .empty { padding:.6rem; color:var(--ink-faint); font-size:.88rem; }
+mark { background:var(--accent-soft); color:inherit; border-radius:2px; }
+
+/* ---- three-column shell ---- */
+.shell { display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--toc); gap:2rem;
+  max-width:84rem; margin:0 auto; padding:0 1rem; }
+.side, .toc { position:sticky; top:3.4rem; align-self:start; max-height:calc(100vh - 4rem);
+  overflow:auto; padding:1.4rem 0 2rem; font-size:.9rem; }
+.side-h { margin:0 0 .5rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-faint); }
+.side a { display:block; padding:.28rem .55rem; margin-left:-.55rem; border-radius:5px;
+  color:var(--ink-soft); }
+.side a:hover { background:var(--paper-sunk); text-decoration:none; }
+.side a.here { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.toc a { display:block; padding:.14rem 0 .14rem .6rem; color:var(--ink-faint);
+  font-size:.85rem; border-left:2px solid transparent;
+  overflow-wrap:anywhere; }
+.toc a.lvl3 { padding-left:1.4rem; }
+.toc a:hover, .toc a.here { color:var(--accent); border-left-color:var(--accent);
+  text-decoration:none; }
+
+main { min-width:0; padding:1.6rem 0 5rem; }
+main > :first-child { margin-top:0; }
+h1,h2,h3,h4 { line-height:1.25; letter-spacing:-.012em; text-wrap:balance; }
+h2 { margin:2.6rem 0 .8rem; font-size:1.5rem; padding-bottom:.3rem;
+  border-bottom:1px solid var(--rule); }
+h3 { margin:2rem 0 .5rem; font-size:1.15rem; }
+p, ul, ol { max-width:70ch; }
+.lede { font-size:1.1rem; color:var(--ink-soft); max-width:66ch; }
+.anchor { margin-left:.4rem; color:var(--ink-faint); opacity:0; font-weight:400; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity:1; }
+
+code { font-family:var(--mono); font-size:.88em; background:var(--paper-sunk);
+  padding:.1em .32em; border-radius:4px; }
+pre { background:var(--paper-sunk); border:1px solid var(--rule); border-radius:8px;
+  padding:.85rem 1rem; overflow-x:auto; font-size:.86rem; line-height:1.5; }
+pre code { background:none; padding:0; font-size:inherit; }
+blockquote { margin:1.2rem 0; padding:.1rem 0 .1rem 1rem; border-left:3px solid var(--guide);
+  color:var(--ink-soft); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; display:block;
+  overflow-x:auto; }
+th, td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--rule);
+  vertical-align:top; }
+th { font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); }
+
+/* ---- settings reference ---- */
+.settings-index ul { list-style:none; padding:0; max-width:none;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:.15rem .9rem; }
+.settings-index li { display:flex; gap:.5rem; align-items:baseline; padding:.2rem 0;
+  border-bottom:1px solid var(--rule); }
+.settings-index li span { color:var(--ink-faint); font-size:.82rem; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.setting { padding-top:.4rem; scroll-margin-top:4rem; }
+.setting .summary { color:var(--ink-soft); margin:.2rem 0 .6rem; }
+dl.meta { display:flex; flex-wrap:wrap; gap:.4rem 1.6rem; margin:.6rem 0 1rem; }
+dl.meta > div { display:flex; gap:.45rem; align-items:baseline; }
+dl.meta dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); }
+dl.meta dd { margin:0; }
+.note { border-left:3px solid var(--guide); padding:.1rem 0 .1rem .9rem; margin:1rem 0;
+  color:var(--ink-soft); font-size:.92rem; }
+.note p { margin:.25rem 0; }
+.sample-label { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--ink-faint); margin:1.1rem 0 .35rem; }
+.panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(21rem,1fr)); gap:.9rem;
+  margin:.5rem 0 1rem; }
+.panels figure { margin:0; border:1px solid var(--rule); border-radius:8px; overflow:hidden;
+  background:var(--paper-raise); }
+.panels figcaption { padding:.4rem .75rem; background:var(--paper-sunk);
+  border-bottom:1px solid var(--rule); font-size:.8rem; color:var(--ink-soft); }
+.panels figcaption code { background:none; padding:0; color:var(--ink); font-weight:600; }
+.panels pre { border:0; border-radius:0; background:none; margin:0; }
+.declined { margin:.6rem .75rem 0; font-size:.85rem; color:var(--guide); }
+.declined span { color:var(--ink-faint); font-family:var(--mono); font-size:.8rem; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(16rem,1fr)); gap:.8rem;
+  margin:1rem 0; }
+.card { display:block; padding:.9rem 1rem; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper-raise); color:var(--ink); }
+.card:hover { border-color:var(--accent); text-decoration:none; }
+.card h3 { margin:0 0 .3rem; font-size:1rem; color:var(--accent); }
+.card p { margin:0; font-size:.88rem; color:var(--ink-soft); max-width:none; }
+
+@media (max-width:1100px) { .toc { display:none; } .shell { grid-template-columns:var(--side) minmax(0,1fr); } }
+@media (max-width:760px) {
+  .shell { grid-template-columns:minmax(0,1fr); gap:0; }
+  .side { position:static; max-height:none; padding-bottom:1rem;
+    border-bottom:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:.2rem; }
+  .side-h { width:100%; }
+  .top { flex-wrap:wrap; }
+  .search { order:9; max-width:none; flex-basis:100%; margin-left:0; }
+}
+
+.settings-index li span code { background:none; padding:0; font-size:.95em; }
+.setting .summary code { background:var(--paper-sunk); }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="../index.html">sqlalign</a>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
+           aria-label="Search documentation">
+    <div id="results" role="listbox" hidden></div>
+  </div>
+  <a class="ext" href="https://github.com/pua2/sqlalign">GitHub</a>
+  <button id="theme" aria-label="Toggle colour scheme">◐</button>
+</header>
+<div class="shell">
+  <nav class="side" aria-label="Documentation sections">
+    <p class="side-h">Documentation</p><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="configuration.html">Configuration</a>
+<a href="settings.html">Settings reference</a>
+<a href="style.html" class='here'>The house style</a>
+<a href="cli.html">CLI reference</a>
+<a href="dialects.html">Dialects</a>
+<a href="architecture.html">Architecture</a>
+<a href="faq.html">FAQ</a></nav>
+  <main id="main"><p>Read this page to see exactly what sqlalign does to your SQL, construct by construct,
+and to find the handful of decisions you can change.</p>
+<p>Every SQL block below is real output from <code>sqlalign --stdout</code>, paired with the
+messy input that produced it. A few later blocks reuse an input shown earlier.
+Nothing here is hand-written &quot;expected&quot; SQL.</p>
+<p>If you only want the summary: sqlalign stacks lists one item per line with the
+separator leading, and pads repeated elements into vertical columns. It does not
+change what your SQL means, and it does not lint.</p>
+<h2 id="two-rules-generate-most-of-the-layout">Two rules generate most of the layout<a class="anchor" href="#two-rules-generate-most-of-the-layout" aria-label="Link to this section">#</a></h2>
+<p><strong>One element per line, separator first.</strong> In any stacked list — select items,
+<code>GROUP BY</code> columns, <code>SET</code> assignments, <code>CREATE TABLE</code> columns — each item gets its
+own line, opened by the comma rather than closed by it. In a clause, the first
+item rides the clause keyword's line.</p>
+<p><strong>Repeated elements pad into a column.</strong> Table aliases, <code>AS</code> aliases, <code>ON</code>
+keywords, comparison operators, <code>THEN</code> values, column types: each kind gets one
+column per scope, wide enough for the longest entry.</p>
+<p>Two details make the columns look the way they do:</p>
+<ul>
+<li>Everything except operators is <strong>left-aligned</strong> and starts one space past the
+longest content to its left.</li>
+<li><strong>Operators right-align.</strong> Their <em>end</em> is what lines up, so <code>=</code>, <code>&gt;=</code>, <code>IN</code>,
+<code>IS</code> and <code>BETWEEN</code> all finish in the same column and their right-hand operands
+start together.</li>
+</ul>
+<p>A <strong>scope</strong> is the region a column spans: one select list, one whole <code>FROM</code>
+block, one <code>WHERE</code> clause, one <code>CASE</code>. Brackets end a scope, so a subquery or CTE
+aligns internally and never with its parent.</p>
+<h2 id="the-select-list">The select list<a class="anchor" href="#the-select-list" aria-label="Link to this section">#</a></h2>
+<pre><code class="language-sql">select id, first_name, last_name, email, created_at from users where status = 'active' and created_at &gt;= '2026-01-01' order by created_at desc limit 100;
+</code></pre>
+<pre><code class="language-sql">SELECT id
+     , first_name
+     , last_name
+     , email
+     , created_at
+FROM users
+WHERE status      = 'active'
+  AND created_at &gt;= '2026-01-01'
+ORDER BY created_at DESC
+LIMIT 100;
+</code></pre>
+<p>The first item stays on the <code>SELECT</code> line. Every later item starts in that same
+column, with its comma two columns to the left. <code>*</code> is never expanded into
+columns.</p>
+<p>When items carry aliases, the <code>AS</code> keywords form a column across the select list.
+Select-list aliases always render with <code>AS</code>, so <code>SELECT a x</code> comes back as
+<code>SELECT a AS x</code> — but sqlalign never invents an alias where you had none, and
+never changes the name you chose:</p>
+<pre><code class="language-sql">select customer_id, date_trunc('month', order_date) as order_month, count(*) as order_count, sum(total) as revenue, avg(total) as avg_order_value from orders where status = 'complete' group by customer_id, date_trunc('month', order_date) having count(*) &gt; 3 and sum(total) &gt; 1000 order by revenue desc;
+</code></pre>
+<pre><code class="language-sql">SELECT customer_id
+     , DATE_TRUNC('month', order_date) AS order_month
+     , COUNT(*)                        AS order_count
+     , SUM(total)                      AS revenue
+     , AVG(total)                      AS avg_order_value
+FROM orders
+WHERE status = 'complete'
+GROUP BY customer_id
+       , DATE_TRUNC('month', order_date)
+HAVING COUNT(*)   &gt; 3
+   AND SUM(total) &gt; 1000
+ORDER BY revenue DESC;
+</code></pre>
+<h3 id="group-by-order-by-limit">GROUP BY, ORDER BY, LIMIT<a class="anchor" href="#group-by-order-by-limit" aria-label="Link to this section">#</a></h3>
+<p><code>GROUP BY</code> and <code>ORDER BY</code> use the same stacking rule as the select list, with two
+exceptions. A <strong>single item stays inline</strong> — <code>ORDER BY revenue DESC</code> above. So do
+<strong>positional references</strong>, however many: <code>GROUP BY 1, 2</code> stays on one line (see the
+CTE example further down). Two or more named columns stack. <code>LIMIT</code> gets its own
+line.</p>
+<h3 id="set-operations">Set operations<a class="anchor" href="#set-operations" aria-label="Link to this section">#</a></h3>
+<p>A set operator sits alone on its line with a blank line on each side, and each
+branch is formatted independently:</p>
+<pre><code class="language-sql">select id, email, 'customer' as source from customers where created_at &gt;= '2026-01-01' union all select id, email, 'lead' as source from leads where converted = false union all select id, email, 'partner' as source from partner_contacts;
+</code></pre>
+<pre><code class="language-sql">SELECT id
+     , email
+     , 'customer' AS source
+FROM customers
+WHERE created_at &gt;= '2026-01-01'
+
+UNION ALL
+
+SELECT id
+     , email
+     , 'lead' AS source
+FROM leads
+WHERE converted = FALSE
+
+UNION ALL
+
+SELECT id
+     , email
+     , 'partner' AS source
+FROM partner_contacts;
+</code></pre>
+<h2 id="the-from-block">The FROM block<a class="anchor" href="#the-from-block" aria-label="Link to this section">#</a></h2>
+<p>Table aliases align into one column that spans the whole <code>FROM</code> block — the base
+table and every join together, not each join on its own. Table aliases render
+implicitly, so <code>FROM orders AS o</code> comes back as <code>FROM orders o</code>.</p>
+<pre><code class="language-sql">select cust.customer_id, cust.email, ord.order_id, ord.total, line_items.product_id, line_items.quantity, addr.city from customers cust inner join orders ord on ord.customer_id = cust.customer_id left join order_line_items line_items on line_items.order_id = ord.order_id left join shipping_addresses addr on addr.order_id = ord.order_id and addr.address_type = 'shipping' where ord.order_date &gt;= '2026-07-01' and cust.segment = 'enterprise';
+</code></pre>
+<pre><code class="language-sql">SELECT cust.customer_id
+     , cust.email
+     , ord.order_id
+     , ord.total
+     , line_items.product_id
+     , line_items.quantity
+     , addr.city
+FROM customers               cust
+INNER JOIN orders            ord        ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr       ON addr.order_id       = ord.order_id
+                                       AND addr.address_type   = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<p><code>shipping_addresses</code> is the longest table name, so the alias column opens one
+space past it and <code>cust</code>, <code>ord</code>, <code>line_items</code> and <code>addr</code> all start there.</p>
+<h2 id="the-on-and-condition-column">The ON/AND condition column<a class="anchor" href="#the-on-and-condition-column" aria-label="Link to this section">#</a></h2>
+<p>This is the part of the style you are least likely to have seen before. Look at
+the same block again:</p>
+<pre><code class="language-sql">FROM customers               cust
+INNER JOIN orders            ord        ON ord.customer_id     = cust.customer_id
+LEFT JOIN order_line_items   line_items ON line_items.order_id = ord.order_id
+LEFT JOIN shipping_addresses addr       ON addr.order_id       = ord.order_id
+                                       AND addr.address_type   = 'shipping'
+</code></pre>
+<p>Three columns run the full height of the block: the aliases, the <code>ON</code> keyword, and
+the <code>=</code> operators. The join conditions therefore read as a two-column table of left
+operand and right operand — across every join at once, not per join. (Table names
+are not a column; they start wherever their join keyword ends.)</p>
+<p>An extra condition drops to its own line and its <code>AND</code> right-aligns to end where
+<code>ON</code> ends, so <code>ON</code> and <code>AND</code> read as one stack of connectives.</p>
+<p>Aligning aliases is not unusual — sqlfluff aligns alias expressions too. Carrying
+one <code>ON</code>/<code>AND</code> column across an entire <code>FROM</code> block is the unusual part: the other
+formatters surveyed in the README break the line instead of padding it. If you
+want it gone, <code>--align-targets</code> drops <code>join_conditions</code> and keeps the rest.</p>
+<h2 id="where-and-having">WHERE and HAVING<a class="anchor" href="#where-and-having" aria-label="Link to this section">#</a></h2>
+<p>The first condition rides the keyword's line. Later conditions get their own
+lines, and their <code>AND</code>/<code>OR</code> right-aligns to <strong>end where the keyword ends</strong> —
+column 5 for <code>WHERE</code>, column 6 for <code>HAVING</code>. That is why <code>AND</code> is indented two
+under <code>WHERE</code> and three under <code>HAVING</code>.</p>
+<p>Within the clause, comparison operators right-align:</p>
+<pre><code class="language-sql">SELECT id, name, category, price FROM products WHERE (category IN ('electronics', 'appliances', 'accessories') OR name LIKE '%refurb%') AND price BETWEEN 25 AND 500 AND discontinued = false AND supplier_id IS NOT NULL;
+</code></pre>
+<pre><code class="language-sql">SELECT id
+     , name
+     , category
+     , price
+FROM products
+WHERE (category  IN ('electronics', 'appliances', 'accessories')
+       OR name LIKE '%refurb%')
+  AND price  BETWEEN 25 AND 500
+  AND discontinued = FALSE
+  AND supplier_id IS NOT NULL;
+</code></pre>
+<p>Two things are worth reading closely there.</p>
+<p><strong>Operators end together, they do not start together.</strong> <code>BETWEEN</code>, <code>=</code> and <code>IS</code>
+are 7, 1 and 2 characters wide, and all three finish in the same column, so the
+values to their right line up.</p>
+<p><strong>A parenthesized group is its own sub-scope.</strong> <code>IN</code> and <code>LIKE</code> align with each
+other inside the parens; <code>BETWEEN</code>, <code>=</code> and <code>IS</code> align with each other outside it.
+The two groups do not share a column. Inside the group, <code>OR</code> aligns with the
+group's first condition rather than with the outer <code>AND</code>.</p>
+<h2 id="case">CASE<a class="anchor" href="#case" aria-label="Link to this section">#</a></h2>
+<p>sqlalign has two <code>CASE</code> forms and picks between them automatically.</p>
+<p><strong>Short form</strong> puts each <code>WHEN cond THEN val</code> on one line, with the <code>WHEN</code>s
+aligned one space past <code>CASE</code> and the <code>THEN</code>s padded into a column. <code>END</code> sits
+under <code>CASE</code>.</p>
+<p><strong>Long form</strong> puts <code>THEN</code> on its own line, indented two past its <code>WHEN</code>. You get
+it when a <code>WHEN</code> condition is a compound boolean (<code>AND</code>/<code>OR</code>), or when a
+<code>WHEN … THEN …</code> row would not fit the width limit.</p>
+<p>Both forms in one query — the second <code>CASE</code> goes long because its second <code>WHEN</code>
+is compound, even though every row would have fit:</p>
+<pre><code class="language-sql">select order_id, total, case when total &gt;= 1000 then 'large' when total &gt;= 100 then 'medium' when total &gt; 0 then 'small' else 'invalid' end as order_size, case when status = 'complete' then 1 when status = 'pending' and not is_archived then 2 else 99 end as status_rank from orders;
+</code></pre>
+<pre><code class="language-sql">SELECT order_id
+     , total
+     , CASE WHEN total &gt;= 1000 THEN 'large'
+            WHEN total &gt;= 100  THEN 'medium'
+            WHEN total &gt; 0     THEN 'small'
+            ELSE 'invalid'
+       END AS order_size
+     , CASE WHEN status = 'complete'
+              THEN 1
+            WHEN status = 'pending'
+             AND NOT is_archived
+              THEN 2
+            ELSE 99
+       END AS status_rank
+FROM orders;
+</code></pre>
+<p><code>CASE</code> is never left alone on a line: the first <code>WHEN</code> always stays with it.</p>
+<p>Here is the width trigger on its own — no compound condition, just a result string
+too long for the line:</p>
+<pre><code class="language-sql">select order_id, case when total &gt;= 1000 then 'a really quite long result string that pushes this row over the configured width limit' when total &gt; 0 then 'small' else 'none' end as bucket from orders;
+</code></pre>
+<pre><code class="language-sql">SELECT order_id
+     , CASE WHEN total &gt;= 1000
+              THEN 'a really quite long result string that pushes this row over the configured width limit'
+            WHEN total  &gt; 0
+              THEN 'small'
+            ELSE 'none'
+       END AS bucket
+FROM orders;
+</code></pre>
+<h2 id="window-functions">Window functions<a class="anchor" href="#window-functions" aria-label="Link to this section">#</a></h2>
+<p><code>OVER</code> takes a space before its paren — it is a keyword, not a function name. A
+window that fits stays on one line. One that does not breaks at window sub-clause
+boundaries, with continuation lines aligned under <code>PARTITION</code>. The <code>AS</code> alias
+still joins the select list's alias column, measured against the last line:</p>
+<pre><code class="language-sql">select customer_id, order_id, order_date, total, row_number() over (partition by customer_id order by order_date desc) as rn, sum(total) over (partition by customer_id order by order_date rows between unbounded preceding and current row) as running_total, lag(order_date) over (partition by customer_id order by order_date) as prev_order_date from orders;
+</code></pre>
+<pre><code class="language-sql">SELECT customer_id
+     , order_id
+     , order_date
+     , total
+     , ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS rn
+     , SUM(total) OVER (PARTITION BY customer_id ORDER BY order_date
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)    AS running_total
+     , LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date)   AS prev_order_date
+FROM orders;
+</code></pre>
+<p>The frame clause is the first thing to move down when a window is too wide.</p>
+<h2 id="ctes">CTEs<a class="anchor" href="#ctes" aria-label="Link to this section">#</a></h2>
+<p>Each CTE opens with <code>name AS (</code>, indents its body two, and closes with <code>)</code> at the
+statement's anchor column. A blank line separates CTEs from each other and from
+the final <code>SELECT</code>, and the separator comma opens the next CTE's line:</p>
+<pre><code class="language-sql">with monthly_revenue as (select customer_id, date_trunc('month', order_date) as month, sum(total) as revenue from orders group by 1, 2), top_customers as (select customer_id from monthly_revenue group by customer_id having sum(revenue) &gt; 10000) select m.customer_id, m.month, m.revenue from monthly_revenue m join top_customers t on t.customer_id = m.customer_id order by m.customer_id, m.month;
+</code></pre>
+<pre><code class="language-sql">WITH monthly_revenue AS (
+  SELECT customer_id
+       , DATE_TRUNC('month', order_date) AS month
+       , SUM(total)                      AS revenue
+  FROM orders
+  GROUP BY 1, 2
+)
+
+, top_customers AS (
+  SELECT customer_id
+  FROM monthly_revenue
+  GROUP BY customer_id
+  HAVING SUM(revenue) &gt; 10000
+)
+
+SELECT m.customer_id
+     , m.month
+     , m.revenue
+FROM monthly_revenue m
+JOIN top_customers   t ON t.customer_id = m.customer_id
+ORDER BY m.customer_id
+       , m.month;
+</code></pre>
+<p>The <code>AS</code> column inside <code>monthly_revenue</code> is computed from that CTE's items alone.
+<code>top_customers</code> and the final <code>SELECT</code> each resolve their own columns; the
+brackets keep them apart.</p>
+<p><code>WITH RECURSIVE</code> gets the same layout, with the set operator inside the CTE body
+following the usual blank-line rule:</p>
+<pre><code class="language-sql">with recursive tree as (select id, parent_id, 1 as depth from nodes where parent_id is null union all select n.id, n.parent_id, t.depth + 1 from nodes n join tree t on t.id = n.parent_id) select id, depth from tree order by depth;
+</code></pre>
+<pre><code class="language-sql">WITH RECURSIVE tree AS (
+  SELECT id
+       , parent_id
+       , 1 AS depth
+  FROM nodes
+  WHERE parent_id IS NULL
+
+  UNION ALL
+
+  SELECT n.id
+       , n.parent_id
+       , t.depth + 1
+  FROM nodes n
+  JOIN tree  t ON t.id = n.parent_id
+)
+
+SELECT id
+     , depth
+FROM tree
+ORDER BY depth;
+</code></pre>
+<h3 id="subqueries">Subqueries<a class="anchor" href="#subqueries" aria-label="Link to this section">#</a></h3>
+<p>A derived table opens inline after <code>(</code>, aligns its body to its own <code>SELECT</code>, and
+drops the closing <code>)</code> to a line of its own, with the alias and <code>ON</code> following it
+there. Scalar, <code>IN (…)</code> and <code>EXISTS (…)</code> subqueries close inline instead:</p>
+<pre><code class="language-sql">select u.id, u.email, recent.last_order_date, (select count(*) from support_tickets st where st.user_id = u.id) as ticket_count from users u join (select customer_id, max(order_date) as last_order_date from orders group by customer_id) recent on recent.customer_id = u.id where u.id in (select user_id from subscriptions where plan = 'premium');
+</code></pre>
+<pre><code class="language-sql">SELECT u.id
+     , u.email
+     , recent.last_order_date
+     , (SELECT COUNT(*)
+        FROM support_tickets st
+        WHERE st.user_id = u.id) AS ticket_count
+FROM users u
+JOIN (SELECT customer_id
+           , MAX(order_date) AS last_order_date
+      FROM orders
+      GROUP BY customer_id
+     ) recent ON recent.customer_id = u.id
+WHERE u.id IN (SELECT user_id
+               FROM subscriptions
+               WHERE plan = 'premium');
+</code></pre>
+<p>A derived table is deliberately excluded from the <code>FROM</code> block's alias and <code>ON</code>
+columns — its alias sits on the closing-paren line, anchored to the subquery.</p>
+<h2 id="insert-update-delete">INSERT, UPDATE, DELETE<a class="anchor" href="#insert-update-delete" aria-label="Link to this section">#</a></h2>
+<p><code>INSERT INTO table</code> takes its own line. The column list uses the same leading
+separator as a select list, opened by <code>(</code> and two spaces, and closed by <code>)</code>
+touching the last column. The <code>SELECT</code> then starts at column 1. (A top-level
+<code>INSERT … VALUES</code> is not modelled yet and passes through byte-identical; <code>VALUES</code>
+inside a <code>MERGE</code> is formatted, as below.)</p>
+<p><code>UPDATE … SET</code> stacks assignments with the <code>=</code> aligned. <code>DELETE FROM</code> is followed
+by a normal <code>WHERE</code> clause.</p>
+<pre><code class="language-sql">insert into daily_revenue (report_date, channel, revenue, order_count) select order_date, channel, sum(total), count(*) from orders where order_date = current_date - 1 group by order_date, channel;
+update products set price = price * 1.05, updated_at = current_timestamp where category = 'electronics' and discontinued = false;
+delete from daily_revenue where report_date &lt; '2026-01-01' and channel = 'legacy';
+</code></pre>
+<pre><code class="language-sql">INSERT INTO daily_revenue
+(  report_date
+ , channel
+ , revenue
+ , order_count)
+SELECT order_date
+     , channel
+     , SUM(total)
+     , COUNT(*)
+FROM orders
+WHERE order_date = CURRENT_DATE - 1
+GROUP BY order_date
+       , channel;
+
+UPDATE products
+SET price      = price * 1.05
+  , updated_at = CURRENT_TIMESTAMP
+WHERE category     = 'electronics'
+  AND discontinued = FALSE;
+
+DELETE FROM daily_revenue
+WHERE report_date &lt; '2026-01-01'
+  AND channel     = 'legacy';
+</code></pre>
+<p>The blank lines between those three statements are not from the input, which had
+none. sqlalign puts exactly one blank line between two statements when <strong>both are
+multi-line</strong>, and leaves adjacency alone otherwise. <code>--blank-lines-between-statements N</code>
+forces a fixed count instead.</p>
+<h2 id="merge">MERGE<a class="anchor" href="#merge" aria-label="Link to this section">#</a></h2>
+<p>Every <code>MERGE</code> clause starts its own line at column 1. The <code>ON</code> block uses
+<code>WHERE</code>-clause geometry — <code>ON</code> and <code>AND</code> right-aligned to end at column 5, with
+the operators padded — and <code>SET</code> behaves exactly like an <code>UPDATE</code>:</p>
+<pre><code class="language-sql">merge into daily_revenue tgt using staging_daily_revenue src on tgt.report_date = src.report_date and tgt.channel = src.channel when matched then update set revenue = src.revenue, order_count = src.order_count, updated_at = current_timestamp when not matched then insert (report_date, channel, revenue, order_count) values (src.report_date, src.channel, src.revenue, src.order_count);
+</code></pre>
+<pre><code class="language-sql">MERGE INTO daily_revenue tgt
+USING staging_daily_revenue src
+   ON tgt.report_date = src.report_date
+  AND tgt.channel     = src.channel
+WHEN MATCHED
+THEN UPDATE
+SET revenue     = src.revenue
+  , order_count = src.order_count
+  , updated_at  = CURRENT_TIMESTAMP
+WHEN NOT MATCHED
+THEN INSERT
+(  report_date
+ , channel
+ , revenue
+ , order_count)
+VALUES
+(  src.report_date
+ , src.channel
+ , src.revenue
+ , src.order_count
+);
+</code></pre>
+<h2 id="create-table">CREATE TABLE<a class="anchor" href="#create-table" aria-label="Link to this section">#</a></h2>
+<p>One column per line. The first is indented 4, the leading commas sit at column 3,
+and three columns align: name, type, then constraints. A table-level constraint
+is the last list item.</p>
+<pre><code class="language-sql">create table daily_revenue (report_date date not null, channel varchar(50) not null, revenue numeric(12,2) default 0, order_count int default 0, created_at timestamp default current_timestamp, primary key (report_date, channel));
+</code></pre>
+<pre><code class="language-sql">CREATE TABLE daily_revenue (
+    report_date DATE           NOT NULL
+  , channel     VARCHAR(50)    NOT NULL
+  , revenue     NUMERIC(12, 2) DEFAULT 0
+  , order_count INT            DEFAULT 0
+  , created_at  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
+  , PRIMARY KEY (report_date, channel)
+);
+</code></pre>
+<p>Note <code>NUMERIC(12,2)</code> became <code>NUMERIC(12, 2)</code>: inline lists always take a space
+after the comma.</p>
+<p>On Redshift, constraints align <strong>per kind</strong> rather than sharing one column, and
+table attributes follow the closing paren, one clause per line. <code>ENCODE</code> values
+are identifiers, so they come through exactly as you wrote them — <code>az64</code> stays
+lowercase, <code>AZ64</code> stays uppercase:</p>
+<pre><code class="language-sql">create table fact_orders (order_id bigint not null, customer_id bigint not null encode az64, order_date date not null encode az64, total numeric(12, 2) encode az64, channel varchar(32) encode lzo) diststyle key distkey (customer_id) compound sortkey (order_date, customer_id);
+</code></pre>
+<pre><code class="language-sql">CREATE TABLE fact_orders (
+    order_id    BIGINT NOT NULL
+  , customer_id BIGINT NOT NULL ENCODE az64
+  , order_date  DATE   NOT NULL ENCODE az64
+  , total       NUMERIC(12, 2)  ENCODE az64
+  , channel     VARCHAR(32)     ENCODE lzo
+)
+DISTSTYLE KEY DISTKEY (customer_id)
+COMPOUND SORTKEY (order_date, customer_id);
+</code></pre>
+<p>The <code>NOT NULL</code> column is measured over only the three lines that carry it; the
+<code>ENCODE</code> column over only the four that carry it. That is why <code>total</code> and
+<code>channel</code> have no <code>NOT NULL</code> gap to pay for.</p>
+<h2 id="plpgsql-bodies">plpgsql <code>$$</code> bodies<a class="anchor" href="#plpgsql-bodies" aria-label="Link to this section">#</a></h2>
+<p>sqlalign parses the body between <code>$$ … $$</code> and formats it with the same engine it
+uses at the top level, rather than treating it as an opaque string. Header clauses
+each get their own line, body statements sit at column 1 with blank lines between
+them, and <code>$$;</code> closes at column 1.</p>
+<pre><code class="language-sql">create or replace function get_customer_ltv(p_customer_id int) returns numeric language plpgsql as $$ declare v_ltv numeric; begin select sum(total) into v_ltv from orders where customer_id = p_customer_id and status = 'complete'; if v_ltv is null then v_ltv := 0; end if; return v_ltv; end; $$;
+</code></pre>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION get_customer_ltv(p_customer_id INT)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+
+DECLARE v_ltv NUMERIC;
+
+BEGIN
+
+SELECT SUM(total) INTO v_ltv
+FROM orders
+WHERE customer_id = p_customer_id
+  AND status      = 'complete';
+
+IF v_ltv IS NULL
+  THEN v_ltv := 0;
+END IF;
+
+RETURN v_ltv;
+
+END;
+$$;
+</code></pre>
+<p>The <code>WHERE</code> clause inside the body is aligned by the same rules as one at the top
+level. A larger body shows the full treatment — <code>DELETE</code>, an <code>INSERT</code> with its
+column list, <code>GET DIAGNOSTICS</code>, and an <code>IF</code>/<code>THEN</code>/<code>ELSE</code> block:</p>
+<pre><code class="language-sql">create procedure refresh_daily_revenue(target_date date) language plpgsql as $$ declare row_count int; begin delete from daily_revenue where report_date = target_date; insert into daily_revenue (report_date, channel, revenue, order_count) select order_date, channel, sum(total), count(*) from orders where order_date = target_date group by order_date, channel; get diagnostics row_count = row_count; if row_count = 0 then raise warning 'no orders found for %', target_date; else raise notice 'loaded % rows', row_count; end if; end; $$;
+</code></pre>
+<pre><code class="language-sql">CREATE PROCEDURE refresh_daily_revenue(target_date DATE)
+LANGUAGE plpgsql
+AS $$
+
+DECLARE row_count INT;
+
+BEGIN
+
+DELETE FROM daily_revenue
+WHERE report_date = target_date;
+
+INSERT INTO daily_revenue
+(  report_date
+ , channel
+ , revenue
+ , order_count)
+SELECT order_date
+     , channel
+     , SUM(total)
+     , COUNT(*)
+FROM orders
+WHERE order_date = target_date
+GROUP BY order_date
+       , channel;
+
+GET DIAGNOSTICS row_count = ROW_COUNT;
+
+IF row_count = 0
+  THEN RAISE WARNING 'no orders found for %', target_date;
+  ELSE RAISE NOTICE 'loaded % rows', row_count;
+END IF;
+
+END;
+$$;
+</code></pre>
+<p>One header normalization to know about: <code>LANGUAGE 'plpgsql'</code> loses its quotes and
+comes back as <code>LANGUAGE plpgsql</code>. The quoted form is legacy syntax; the Postgres
+and Redshift docs both use the unquoted one.</p>
+<p><code>--no-format-bodies</code> turns body formatting off. Note what that does: the whole
+<code>CREATE FUNCTION</code>/<code>CREATE PROCEDURE</code> statement is left byte-identical, header
+included, while other statements in the same file still format.</p>
+<h2 id="what-the-style-deliberately-does-not-do">What the style deliberately does not do<a class="anchor" href="#what-the-style-deliberately-does-not-do" aria-label="Link to this section">#</a></h2>
+<p><strong>It cannot change what your SQL means.</strong> Every formatted statement is re-parsed
+and AST-compared against the input. Anything that would differ semantically is
+discarded and the original bytes are kept. Identifiers, string literals, cast form
+(<code>::</code> versus <code>CAST</code>), <code>GROUP BY</code> reference form and the alias names you chose all
+survive exactly as written. (The <code>AS</code> keyword itself is layout, not content, so it
+is normalized: present in select lists, absent for table aliases.)</p>
+<p><strong>It does not lint.</strong> sqlalign will not unify your cast styles, insert missing
+aliases, turn <code>JOIN</code> into <code>INNER JOIN</code>, or make <code>GROUP BY</code> references consistent.
+That is sqlfluff's job, and the two are designed to run together.</p>
+<p><strong>It declines what it cannot reproduce exactly.</strong> A construct the engine does not
+model passes through byte-identical, with a warning on stderr and exit code 0.
+<code>JOIN … USING</code> is one such construct today:</p>
+<pre><code class="language-sql">select a.id from a join b using (tenant_id);
+</code></pre>
+<pre><code class="language-sql">select a.id from a join b using (tenant_id);
+</code></pre>
+<pre><code>sqlalign: query.sql: unsupported construct, passed through: select a.id from a join b using (tenant_
+</code></pre>
+<p>Nothing was reformatted and nothing was mangled. The rest of the file still
+formats normally.</p>
+<h2 id="what-you-can-configure">What you can configure<a class="anchor" href="#what-you-can-configure" aria-label="Link to this section">#</a></h2>
+<p>Eleven settings change the style itself. Each is a CLI flag and a <code>.sqlalign.toml</code>
+key (or a <code>[tool.sqlalign]</code> key in <code>pyproject.toml</code>), and each can also arrive via
+a preset. <code>sqlalign --show-config file.sql</code> prints what is actually in effect.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Config key</th>
+<th>Default</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--no-align</code></td>
+<td><code>align</code></td>
+<td><code>true</code></td>
+<td>all column padding, on or off</td>
+</tr>
+<tr>
+<td><code>--align-targets a,b,…</code></td>
+<td><code>align_targets</code></td>
+<td>all but <code>table_names</code></td>
+<td>which columns are padded</td>
+</tr>
+<tr>
+<td><code>--comma-position</code></td>
+<td><code>comma_position</code></td>
+<td><code>leading</code></td>
+<td>where the separator comma sits</td>
+</tr>
+<tr>
+<td><code>--boolean-operator-position</code></td>
+<td><code>boolean_operator_position</code></td>
+<td><code>leading</code></td>
+<td>where <code>AND</code>/<code>OR</code> sit</td>
+</tr>
+<tr>
+<td><code>--on-placement</code></td>
+<td><code>on_placement</code></td>
+<td><code>inline</code></td>
+<td>whether a join's <code>ON</code> rides the table line</td>
+</tr>
+<tr>
+<td><code>--keyword-case</code></td>
+<td><code>keyword_case</code></td>
+<td><code>upper</code></td>
+<td>case of keywords, functions and types</td>
+</tr>
+<tr>
+<td><code>--select-placement</code></td>
+<td><code>select_placement</code></td>
+<td><code>inline</code></td>
+<td>whether the first select item rides the <code>SELECT</code> line</td>
+</tr>
+<tr>
+<td><code>--select-indent N</code></td>
+<td><code>select_indent</code></td>
+<td><code>2</code></td>
+<td>how far the list indents when it starts below <code>SELECT</code></td>
+</tr>
+<tr>
+<td><code>--clause-keyword-align</code></td>
+<td><code>clause_keyword_align</code></td>
+<td><code>left</code></td>
+<td>root clause keywords flush left, or in a river</td>
+</tr>
+<tr>
+<td><code>--river-gutter N</code></td>
+<td><code>river_gutter</code></td>
+<td><code>6</code></td>
+<td>the column a river aligns them to</td>
+</tr>
+<tr>
+<td><code>--table-alias-style</code></td>
+<td><code>table_alias_style</code></td>
+<td><code>bare</code></td>
+<td><code>FROM orders o</code> or <code>FROM orders AS o</code></td>
+</tr>
+</tbody>
+</table>
+<p>Most of what follows is generated from this one query, so you can compare the
+outputs directly:</p>
+<pre><code class="language-sql">select cust.email, ord.total, ord.order_date from customers cust join orders ord on ord.customer_id = cust.customer_id left join shipping_addresses addr on addr.order_id = ord.order_id and addr.address_type = 'shipping' where ord.order_date &gt;= '2026-07-01' and cust.segment = 'enterprise';
+</code></pre>
+<p>The default output — the baseline for every comparison that follows:</p>
+<pre><code class="language-sql">SELECT cust.email
+     , ord.total
+     , ord.order_date
+FROM customers               cust
+JOIN orders                  ord  ON ord.customer_id   = cust.customer_id
+LEFT JOIN shipping_addresses addr ON addr.order_id     = ord.order_id
+                                 AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<h3 id="align-turn-the-padding-off">align — turn the padding off<a class="anchor" href="#align-turn-the-padding-off" aria-label="Link to this section">#</a></h3>
+<p><code>--no-align</code> (or <code>align = false</code>) keeps sqlalign's line structure and emits one
+space between tokens instead of padding into columns. This is what most published
+SQL style guides ask for.</p>
+<pre><code class="language-sh">sqlalign --no-align query.sql
+</code></pre>
+<pre><code class="language-sql">SELECT cust.email
+     , ord.total
+     , ord.order_date
+FROM customers cust
+JOIN orders ord ON ord.customer_id = cust.customer_id
+LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
+  AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment = 'enterprise';
+</code></pre>
+<p>Same lines, same breaks, no padding. Note that the trailing <code>AND</code> condition, which
+had been right-aligned under <code>ON</code>, falls back to a two-space indent.</p>
+<h3 id="align-targets-keep-some-columns-drop-others">align_targets — keep some columns, drop others<a class="anchor" href="#align-targets-keep-some-columns-drop-others" aria-label="Link to this section">#</a></h3>
+<p><code>--align-targets</code> takes a comma-separated list. Anything you leave out collapses
+to a single space; <code>--no-align</code> is the shorthand for leaving out all six. An
+unrecognised name is an error, not a silent no-op.</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Aligns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aliases</code></td>
+<td><code>AS x</code> in a select list, and table aliases in <code>FROM</code>/<code>JOIN</code></td>
+</tr>
+<tr>
+<td><code>operators</code></td>
+<td><code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>LIKE</code>, <code>IS</code> … in <code>WHERE</code>/<code>ON</code>/<code>HAVING</code>/<code>CASE</code></td>
+</tr>
+<tr>
+<td><code>join_conditions</code></td>
+<td>the <code>ON</code>/<code>AND</code> column across a whole <code>FROM</code> block</td>
+</tr>
+<tr>
+<td><code>case_results</code></td>
+<td><code>THEN</code> in a short-form <code>CASE</code></td>
+</tr>
+<tr>
+<td><code>column_types</code></td>
+<td>column types in <code>CREATE TABLE</code></td>
+</tr>
+<tr>
+<td><code>column_constraints</code></td>
+<td><code>NOT NULL</code>/<code>DEFAULT</code>, and Redshift <code>ENCODE</code></td>
+</tr>
+</tbody>
+</table>
+<p>Keeping only the alias column:</p>
+<pre><code class="language-sh">sqlalign --align-targets aliases query.sql
+</code></pre>
+<pre><code class="language-sql">SELECT cust.email
+     , ord.total
+     , ord.order_date
+FROM customers               cust
+JOIN orders                  ord ON ord.customer_id = cust.customer_id
+LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
+  AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment = 'enterprise';
+</code></pre>
+<p>The remaining examples need a query with more columns in play:</p>
+<pre><code class="language-sql">select o.order_id, sum(o.total) as revenue, count(*) as order_count, case when sum(o.total) &gt;= 1000 then 'large' when sum(o.total) &gt; 0 then 'small' else 'none' end as bucket from orders o join customers cust on cust.id = o.customer_id where o.status = 'complete' and o.channel = 'web' group by o.order_id;
+</code></pre>
+<p>Keeping only the operator column:</p>
+<pre><code class="language-sh">sqlalign --align-targets operators wide.sql
+</code></pre>
+<pre><code class="language-sql">SELECT o.order_id
+     , SUM(o.total) AS revenue
+     , COUNT(*) AS order_count
+     , CASE WHEN SUM(o.total) &gt;= 1000 THEN 'large'
+            WHEN SUM(o.total) &gt; 0 THEN 'small'
+            ELSE 'none'
+       END AS bucket
+FROM orders o
+JOIN customers cust ON cust.id = o.customer_id
+WHERE o.status  = 'complete'
+  AND o.channel = 'web'
+GROUP BY o.order_id;
+</code></pre>
+<p>The <code>WHERE</code> operators still line up; the <code>AS</code>, alias and <code>THEN</code> columns are gone.
+That same query with everything <strong>except</strong> <code>case_results</code> shows how narrow a
+single target's effect is — only the <code>THEN</code> column disappears:</p>
+<pre><code class="language-sh">sqlalign --align-targets aliases,operators,join_conditions,column_types,column_constraints wide.sql
+</code></pre>
+<pre><code class="language-sql">SELECT o.order_id
+     , SUM(o.total) AS revenue
+     , COUNT(*)     AS order_count
+     , CASE WHEN SUM(o.total) &gt;= 1000 THEN 'large'
+            WHEN SUM(o.total) &gt; 0 THEN 'small'
+            ELSE 'none'
+       END          AS bucket
+FROM orders    o
+JOIN customers cust ON cust.id = o.customer_id
+WHERE o.status  = 'complete'
+  AND o.channel = 'web'
+GROUP BY o.order_id;
+</code></pre>
+<p>The two DDL targets work the same way. Run the <code>CREATE TABLE</code> from earlier on this
+page with <code>--align-targets column_types</code> and the type column survives while the
+constraint column does not:</p>
+<pre><code class="language-sh">sqlalign --align-targets column_types table.sql
+</code></pre>
+<pre><code class="language-sql">CREATE TABLE daily_revenue (
+    report_date DATE NOT NULL
+  , channel     VARCHAR(50) NOT NULL
+  , revenue     NUMERIC(12, 2) DEFAULT 0
+  , order_count INT DEFAULT 0
+  , created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  , PRIMARY KEY (report_date, channel)
+);
+</code></pre>
+<p>and with <code>--align-targets column_constraints</code>, the reverse:</p>
+<pre><code class="language-sh">sqlalign --align-targets column_constraints table.sql
+</code></pre>
+<pre><code class="language-sql">CREATE TABLE daily_revenue (
+    report_date DATE       NOT NULL
+  , channel VARCHAR(50)    NOT NULL
+  , revenue NUMERIC(12, 2) DEFAULT 0
+  , order_count INT        DEFAULT 0
+  , created_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
+  , PRIMARY KEY (report_date, channel)
+);
+</code></pre>
+<h3 id="comma-position-trailing-commas">comma_position — trailing commas<a class="anchor" href="#comma-position-trailing-commas" aria-label="Link to this section">#</a></h3>
+<p><code>--comma-position trailing</code> moves every separator comma to the end of the
+preceding line. The item column does not move, and no other alignment changes:
+only the comma travels.</p>
+<pre><code class="language-sh">sqlalign --comma-position trailing query.sql
+</code></pre>
+<pre><code class="language-sql">SELECT cust.email,
+       ord.total,
+       ord.order_date
+FROM customers               cust
+JOIN orders                  ord  ON ord.customer_id   = cust.customer_id
+LEFT JOIN shipping_addresses addr ON addr.order_id     = ord.order_id
+                                 AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<h3 id="boolean-operator-position-trailing-and-or">boolean_operator_position — trailing AND/OR<a class="anchor" href="#boolean-operator-position-trailing-and-or" aria-label="Link to this section">#</a></h3>
+<p><code>--boolean-operator-position trailing</code> moves <code>AND</code>/<code>OR</code> to the end of the line
+they follow. Conditions then start under the first condition rather than being
+pushed right by the connective.</p>
+<pre><code class="language-sh">sqlalign --boolean-operator-position trailing query.sql
+</code></pre>
+<pre><code class="language-sql">SELECT cust.email
+     , ord.total
+     , ord.order_date
+FROM customers               cust
+JOIN orders                  ord  ON ord.customer_id   = cust.customer_id
+LEFT JOIN shipping_addresses addr ON addr.order_id     = ord.order_id AND
+                                     addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01' AND
+      cust.segment    = 'enterprise';
+</code></pre>
+<p>This setting and <code>comma_position</code> are independent, but the <code>trailing</code> preset sets
+both at once.</p>
+<h3 id="on-placement-drop-on-below-the-table">on_placement — drop ON below the table<a class="anchor" href="#on-placement-drop-on-below-the-table" aria-label="Link to this section">#</a></h3>
+<p><code>--on-placement own_line</code> moves each join's <code>ON</code> off the table line and onto its
+own, right-aligned to end at column 5 like a <code>WHERE</code>. The alias column stays, and
+the conditions now stack down the left margin instead of hanging off the right.</p>
+<pre><code class="language-sh">sqlalign --on-placement own_line query.sql
+</code></pre>
+<pre><code class="language-sql">SELECT cust.email
+     , ord.total
+     , ord.order_date
+FROM customers               cust
+JOIN orders                  ord
+   ON ord.customer_id   = cust.customer_id
+LEFT JOIN shipping_addresses addr
+   ON addr.order_id     = ord.order_id
+  AND addr.address_type = 'shipping'
+WHERE ord.order_date &gt;= '2026-07-01'
+  AND cust.segment    = 'enterprise';
+</code></pre>
+<p>The condition operators still align across the whole block.</p>
+<h3 id="keyword-case-lowercase-keywords">keyword_case — lowercase keywords<a class="anchor" href="#keyword-case-lowercase-keywords" aria-label="Link to this section">#</a></h3>
+<p><code>--keyword-case lower</code> lowercases keywords, function names and type names. No
+setting recases identifiers, aliases or string literals.</p>
+<pre><code class="language-sh">sqlalign --keyword-case lower query.sql
+</code></pre>
+<pre><code class="language-sql">select cust.email
+     , ord.total
+     , ord.order_date
+from customers               cust
+join orders                  ord  on ord.customer_id   = cust.customer_id
+left join shipping_addresses addr on addr.order_id     = ord.order_id
+                                 and addr.address_type = 'shipping'
+where ord.order_date &gt;= '2026-07-01'
+  and cust.segment    = 'enterprise';
+</code></pre>
+<p>Type names go with them — and so do function names, so <code>SUM(o.total)</code> renders as
+<code>sum(o.total)</code> and <code>COUNT(*)</code> as <code>count(*)</code>:</p>
+<pre><code class="language-sql">create table daily_revenue (
+    report_date date           not null
+  , channel     varchar(50)    not null
+  , revenue     numeric(12, 2) default 0
+  , order_count int            default 0
+  , created_at  timestamp      default current_timestamp
+  , primary key (report_date, channel)
+);
+</code></pre>
+<h3 id="presets">Presets<a class="anchor" href="#presets" aria-label="Link to this section">#</a></h3>
+<p>If one of the four presets is close enough, start there and override the rest.
+<code>--preset NAME</code> on the command line, or <code>preset = &quot;name&quot;</code> in a config file.</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>house</code></td>
+<td>nothing — the default style on this page</td>
+</tr>
+<tr>
+<td><code>compact</code></td>
+<td><code>align = false</code></td>
+</tr>
+<tr>
+<td><code>trailing</code></td>
+<td><code>comma_position = &quot;trailing&quot;</code>, <code>boolean_operator_position = &quot;trailing&quot;</code></td>
+</tr>
+<tr>
+<td><code>dbt</code></td>
+<td><code>keyword_case = &quot;lower&quot;</code>, <code>comma_position = &quot;trailing&quot;</code>, <code>align = false</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>--preset dbt</code> on the same query:</p>
+<pre><code class="language-sh">sqlalign --preset dbt query.sql
+</code></pre>
+<pre><code class="language-sql">select cust.email,
+       ord.total,
+       ord.order_date
+from customers cust
+join orders ord on ord.customer_id = cust.customer_id
+left join shipping_addresses addr on addr.order_id = ord.order_id
+  and addr.address_type = 'shipping'
+where ord.order_date &gt;= '2026-07-01'
+  and cust.segment = 'enterprise';
+</code></pre>
+<p>Precedence runs built-in defaults, then preset, then config file, then
+command-line flags — so a flag always wins.</p>
+<h3 id="two-settings-sqlalign-has-to-choose-for-you">Two settings sqlalign has to choose for you<a class="anchor" href="#two-settings-sqlalign-has-to-choose-for-you" aria-label="Link to this section">#</a></h3>
+<p><code>--neq-style {!=,&lt;&gt;}</code> and <code>--decimal-style {NUMERIC,DECIMAL}</code> exist because
+sqlglot's parser collapses each of those pairs to a single node, erasing which
+spelling you wrote. A spelling has to be picked when printing. These are the only
+two places sqlalign decides for you; everything the parser preserves is passed
+through as written.</p>
+</main>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#two-rules-generate-most-of-the-layout">Two rules generate most of the layout</a><a class="lvl2" href="#the-select-list">The select list</a><a class="lvl3" href="#group-by-order-by-limit">GROUP BY, ORDER BY, LIMIT</a><a class="lvl3" href="#set-operations">Set operations</a><a class="lvl2" href="#the-from-block">The FROM block</a><a class="lvl2" href="#the-on-and-condition-column">The ON/AND condition column</a><a class="lvl2" href="#where-and-having">WHERE and HAVING</a><a class="lvl2" href="#case">CASE</a><a class="lvl2" href="#window-functions">Window functions</a><a class="lvl2" href="#ctes">CTEs</a><a class="lvl3" href="#subqueries">Subqueries</a><a class="lvl2" href="#insert-update-delete">INSERT, UPDATE, DELETE</a><a class="lvl2" href="#merge">MERGE</a><a class="lvl2" href="#create-table">CREATE TABLE</a><a class="lvl2" href="#plpgsql-bodies">plpgsql $$ bodies</a><a class="lvl2" href="#what-the-style-deliberately-does-not-do">What the style deliberately does not do</a><a class="lvl2" href="#what-you-can-configure">What you can configure</a><a class="lvl3" href="#align-turn-the-padding-off">align — turn the padding off</a><a class="lvl3" href="#align-targets-keep-some-columns-drop-others">align_targets — keep some columns, drop others</a><a class="lvl3" href="#comma-position-trailing-commas">comma_position — trailing commas</a><a class="lvl3" href="#boolean-operator-position-trailing-and-or">boolean_operator_position — trailing AND/OR</a><a class="lvl3" href="#on-placement-drop-on-below-the-table">on_placement — drop ON below the table</a><a class="lvl3" href="#keyword-case-lowercase-keywords">keyword_case — lowercase keywords</a><a class="lvl3" href="#presets">Presets</a><a class="lvl3" href="#two-settings-sqlalign-has-to-choose-for-you">Two settings sqlalign has to choose for you</a></aside>
+</div>
+<script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
+// search over the generated index. No dependencies -- the site is static files
+// on GitHub Pages, so anything that needs a server or a CDN cannot be used.
+(function () {
+  var root = document.documentElement;
+
+  // ---- theme -------------------------------------------------------------
+  var stored = null;
+  try { stored = localStorage.getItem("sqlalign-theme"); } catch (e) { /* private mode */ }
+  if (stored) root.setAttribute("data-theme", stored);
+  var toggle = document.getElementById("theme");
+  if (toggle) toggle.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("sqlalign-theme", next); } catch (e) { /* ignore */ }
+  });
+
+  // ---- version selector --------------------------------------------------
+  var version = document.querySelector(".version");
+  if (version) version.addEventListener("change", function () {
+    // Every version is a sibling directory holding the same page names, so the
+    // reader stays on the page they were reading.
+    var page = location.pathname.split("/").pop() || "index.html";
+    location.href = "../" + version.value + "/" + page;
+  });
+
+  // ---- on-this-page ------------------------------------------------------
+  var links = [].slice.call(document.querySelectorAll(".toc a"));
+  if (links.length && "IntersectionObserver" in window) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Object.keys(byId).forEach(function (id) { if (seen[id] && !current) current = id; });
+      links.forEach(function (a) { a.classList.remove("here"); });
+      if (current && byId[current]) byId[current].classList.add("here");
+    }, { rootMargin: "-70px 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+  }
+
+  // ---- search ------------------------------------------------------------
+  var box = document.getElementById("q");
+  var panel = document.getElementById("results");
+  if (!box || !panel) return;
+  var docs = null, cursor = -1;
+
+  function load() {
+    if (docs) return Promise.resolve(docs);
+    return fetch("search-index.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { docs = d; return d; });
+  }
+
+  function escape(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function snippet(text, query) {
+    var i = text.toLowerCase().indexOf(query);
+    if (i < 0) return "";
+    var from = Math.max(0, i - 45), to = Math.min(text.length, i + query.length + 75);
+    return (from ? "…" : "") + escape(text.slice(from, i)) +
+      "<mark>" + escape(text.slice(i, i + query.length)) + "</mark>" +
+      escape(text.slice(i + query.length, to)) + (to < text.length ? "…" : "");
+  }
+
+  function search(query) {
+    var hits = [];
+    docs.forEach(function (d) {
+      // A heading match beats a body match: someone typing `river_gutter` wants
+      // the setting, not the paragraph that mentions it.
+      d.headings.forEach(function (h) {
+        if (h.text.toLowerCase().indexOf(query) >= 0) {
+          hits.push({ rank: 0, page: d.title, href: d.slug + ".html#" + h.id,
+                      label: h.text, hint: "" });
+        }
+      });
+      if (d.title.toLowerCase().indexOf(query) >= 0) {
+        hits.push({ rank: 1, page: d.title, href: d.slug + ".html",
+                    label: d.title, hint: "" });
+      }
+      var s = snippet(d.text, query);
+      if (s) hits.push({ rank: 2, page: d.title, href: d.slug + ".html",
+                         label: d.title, hint: s });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 12);
+  }
+
+  function render(hits) {
+    cursor = -1;
+    if (!hits.length) {
+      panel.innerHTML = '<p class="empty">No matches.</p>';
+    } else {
+      // Everything interpolated here is escaped. The page/label/href come from
+      // the build-time index (slugs are [a-z0-9-] by construction), and the
+      // hint is built by `snippet`, which escapes each slice before inserting
+      // its own <mark>. The query itself is never interpolated raw -- only the
+      // matching span of already-escaped document text is.
+      panel.innerHTML = hits.map(function (h) {
+        return '<a href="' + escape(h.href) + '"><span class="r-page">' + escape(h.page) +
+          "</span><br>" + escape(h.label) +
+          (h.hint ? '<br><span class="r-hit">' + h.hint + "</span>" : "") + "</a>";
+      }).join("");
+    }
+    panel.hidden = false;
+  }
+
+  box.addEventListener("input", function () {
+    var query = box.value.trim().toLowerCase();
+    if (query.length < 2) { panel.hidden = true; return; }
+    load().then(function () { render(search(query)); });
+  });
+
+  box.addEventListener("keydown", function (e) {
+    var items = [].slice.call(panel.querySelectorAll("a"));
+    if (e.key === "Escape") { panel.hidden = true; box.blur(); return; }
+    if (!items.length || panel.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      cursor += e.key === "ArrowDown" ? 1 : -1;
+      if (cursor < 0) cursor = items.length - 1;
+      if (cursor >= items.length) cursor = 0;
+      items.forEach(function (a) { a.classList.remove("on"); });
+      items[cursor].classList.add("on");
+      items[cursor].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      location.href = items[cursor].getAttribute("href");
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!panel.contains(e.target) && e.target !== box) panel.hidden = true;
+  });
+
+  // `/` focuses search, the convention every docs site with a search box uses.
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== box &&
+        !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      box.focus();
+    }
+  });
+})();
+</script>

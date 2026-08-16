@@ -1,0 +1,460 @@
+<meta charset="utf-8">
+<title>sqlalign — a SQL formatter that cannot change what your SQL means</title>
+<meta name="description" content="Columnar SQL formatting for Postgres, Redshift and SQL Server, with a re-parse and AST-compare guarantee on every statement.">
+
+<style>
+  :root {
+    --paper:      #F6F7F9;
+    --paper-sunk: #ECEFF3;
+    --rule:       #D3DAE2;
+    --ink:        #12171C;
+    --ink-soft:   #4A555F;
+    --ink-faint:  #78838D;
+    --accent:     #2B5C8A;
+    --accent-soft:#E3ECF4;
+    --guide:      #B8802A;
+    --guide-faint:#B8802A6E;
+    --ok:         #2F6B4F;
+
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --measure: 68ch;
+    --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+    --step-0:  clamp(.97rem, .94rem + .15vw, 1.06rem);
+    --step-1:  clamp(1.2rem, 1.1rem + .4vw, 1.45rem);
+    --step-2:  clamp(1.6rem, 1.4rem + .9vw, 2.2rem);
+    --step-3:  clamp(2.1rem, 1.6rem + 2.2vw, 3.6rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #0E1216;
+      --paper-sunk: #161C22;
+      --rule:       #28323B;
+      --ink:        #E7ECF1;
+      --ink-soft:   #A5B1BC;
+      --ink-faint:  #74818C;
+      --accent:     #7FB2E0;
+      --accent-soft:#17242F;
+      --guide:      #D6A24A;
+      --guide-faint:#D6A24A66;
+      --ok:         #6FBF95;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0E1216; --paper-sunk:#161C22; --rule:#28323B; --ink:#E7ECF1;
+    --ink-soft:#A5B1BC; --ink-faint:#74818C; --accent:#7FB2E0; --accent-soft:#17242F;
+    --guide:#D6A24A; --guide-faint:#D6A24A66; --ok:#6FBF95;
+  }
+  :root[data-theme="light"] {
+    --paper:#F6F7F9; --paper-sunk:#ECEFF3; --rule:#D3DAE2; --ink:#12171C;
+    --ink-soft:#4A555F; --ink-faint:#78838D; --accent:#2B5C8A; --accent-soft:#E3ECF4;
+    --guide:#B8802A; --guide-faint:#B8802A6E; --ok:#2F6B4F;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: var(--step-0); line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin-inline: auto; padding-inline: clamp(1.1rem, 4vw, 2.5rem); }
+  section { padding-block: clamp(3rem, 7vw, 5.5rem); border-top: 1px solid var(--rule); }
+  section:first-of-type { border-top: 0; }
+  h1, h2, h3 { font-family: var(--mono); font-weight: 700; letter-spacing: -.02em; text-wrap: balance; margin: 0; }
+  h1 { font-size: var(--step-3); line-height: 1.03; }
+  h2 { font-size: var(--step-2); line-height: 1.12; }
+  h3 { font-size: var(--step-1); line-height: 1.25; }
+  p  { margin: 0; max-width: var(--measure); }
+  a  { color: var(--accent); text-underline-offset: .18em; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: var(--step--1); letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .9rem;
+  }
+  .stack   { display: flex; flex-direction: column; gap: 1.1rem; }
+  .stack-l { display: flex; flex-direction: column; gap: 2.2rem; }
+  .lede { font-size: var(--step-1); color: var(--ink-soft); line-height: 1.5; }
+
+  /* ---- masthead ---- */
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding-block: 1.3rem; border-bottom: 1px solid var(--rule);
+  }
+  .brand { font-family: var(--mono); font-weight: 700; letter-spacing: -.03em; font-size: 1.05rem; }
+  .brand span { color: var(--guide); }
+  .top nav { display: flex; gap: 1.3rem; font-family: var(--mono); font-size: var(--step--1); }
+  .top nav a { color: var(--ink-soft); text-decoration: none; }
+  .top nav a:hover { color: var(--accent); }
+
+  /* ---- code ---- */
+  .code {
+    font-family: var(--mono); font-size: clamp(.72rem, .52rem + .55vw, .86rem);
+    line-height: 1.72; background: var(--paper-sunk); color: var(--ink);
+    border: 1px solid var(--rule); padding: 1.05rem 1.15rem; margin: 0;
+    overflow-x: auto; white-space: pre; tab-size: 2;
+  }
+  .code b { font-weight: 700; color: var(--accent); }
+  .code i { font-style: normal; color: var(--ink-faint); }
+  .filelabel {
+    font-family: var(--mono); font-size: var(--step--1); color: var(--ink-faint);
+    letter-spacing: .06em; text-transform: uppercase; margin: 0 0 .45rem;
+  }
+
+  /* ---- the hero: guides mark the columns sqlalign creates ---- */
+  .hero { padding-block: clamp(2.4rem, 6vw, 4.5rem); }
+  .hero h1 span { color: var(--accent); }
+  .compare { display: grid; gap: 1.6rem; margin-top: 2.4rem; }
+  @media (min-width: 900px) { .compare { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+  /* The guides sit in the blank column immediately left of each shared column
+     the formatter actually produced — measured from the real output: character
+     29 (alias), 37 (join-condition operand) and 55 (operator). `ch` is exact in
+     a monospace face, `background-origin: content-box` makes 0 the first text
+     character (no padding arithmetic), and `background-attachment: local` keeps
+     the guides pinned to the text when a narrow screen scrolls the block. */
+  .guided .code {
+    background-color: var(--paper-sunk);
+    background-image:
+      linear-gradient(var(--guide-faint), var(--guide-faint)),
+      linear-gradient(var(--guide-faint), var(--guide-faint)),
+      linear-gradient(var(--guide-faint), var(--guide-faint));
+    background-size: 1px 100%;
+    background-repeat: no-repeat;
+    background-origin: content-box;
+    background-position: 28.5ch 0, 36.5ch 0, 54.5ch 0;
+    background-attachment: local;
+  }
+  .guidenote {
+    font-family: var(--mono); font-size: var(--step--1); color: var(--guide);
+    margin: .55rem 0 0; letter-spacing: .02em;
+  }
+
+  /* ---- claim ---- */
+  .claim { background: var(--accent-soft); border-block: 1px solid var(--rule); }
+  .claim .inner { display: grid; gap: 1.6rem; }
+  @media (min-width: 860px) { .claim .inner { grid-template-columns: 1.15fr 1fr; gap: 3rem; align-items: center; } }
+  .rules { display: flex; flex-direction: column; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  .rules li { display: flex; gap: .7rem; align-items: flex-start; font-size: var(--step--1); font-family: var(--mono); }
+  .rules b { color: var(--ok); flex: none; }
+
+  /* ---- feature rows ---- */
+  .rows { display: flex; flex-direction: column; gap: 2.6rem; }
+  .row { display: grid; gap: 1rem; }
+  @media (min-width: 900px) { .row { grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); gap: 2.4rem; align-items: start; } }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); }
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+  th, td { text-align: left; padding: .6rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+       font-size: .72rem; color: var(--ink-faint); background: var(--paper-sunk); }
+  tr:last-child td { border-bottom: 0; }
+  td code, p code, li code { font-family: var(--mono); font-size: .92em; background: var(--paper-sunk);
+       padding: .08em .34em; border: 1px solid var(--rule); }
+
+  .grid3 { display: grid; gap: 1.4rem; }
+  @media (min-width: 760px) { .grid3 { grid-template-columns: repeat(3, 1fr); } }
+  .card { border: 1px solid var(--rule); padding: 1.2rem; background: var(--paper-sunk); }
+  .card h3 { font-size: 1rem; margin-bottom: .5rem; }
+  .card p { font-size: var(--step--1); color: var(--ink-soft); }
+
+  footer { border-top: 1px solid var(--rule); padding-block: 2.4rem 3.2rem;
+           font-family: var(--mono); font-size: var(--step--1); color: var(--ink-faint); }
+  .foot { display: flex; flex-wrap: wrap; gap: 1.2rem; justify-content: space-between; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">sqlalign<span>│</span></div>
+    <nav>
+      <a href="#guarantee">Guarantee</a>
+      <a href="#style">Style</a>
+      <a href="#configure">Configure</a>
+      <a href="#install">Install</a>
+      <a href="v1/index.html">Docs</a>
+    </nav>
+  </header>
+</div>
+
+<div class="wrap">
+  <section class="hero">
+    <p class="eyebrow">SQL formatter · Postgres · Redshift · SQL Server</p>
+    <h1>Your SQL, in <span>columns</span>.<br>Never rewritten.</h1>
+    <p class="lede" style="margin-top:1.3rem">
+      sqlalign aligns operators, aliases and join conditions into vertical columns — and
+      re-parses every statement it touches to prove it changed nothing but the whitespace.
+    </p>
+
+    <div class="compare">
+      <div>
+        <p class="filelabel">Before</p>
+        <pre class="code" data-example="hero" data-role="input">select cust.customer_id, cust.email,
+ord.total, addr.city
+from customers cust
+inner join orders ord
+on ord.customer_id = cust.customer_id
+left join shipping_addresses addr
+on addr.order_id = ord.order_id
+and addr.address_type = 'shipping'
+where ord.order_date &gt;= '2026-07-01'
+and cust.segment = 'enterprise';</pre>
+      </div>
+      <div>
+        <p class="filelabel">After</p>
+        <div class="guided">
+          <pre class="code" data-example="hero"><b>SELECT</b> cust.customer_id
+     , cust.email
+     , ord.total
+     , addr.city
+<b>FROM</b> customers               cust
+<b>INNER JOIN</b> orders            ord  <b>ON</b> ord.customer_id   = cust.customer_id
+<b>LEFT JOIN</b> shipping_addresses addr <b>ON</b> addr.order_id     = ord.order_id
+                                 <b>AND</b> addr.address_type = 'shipping'
+<b>WHERE</b> ord.order_date &gt;= '2026-07-01'
+  <b>AND</b> cust.segment    = 'enterprise';</pre>
+        </div>
+        <p class="guidenote">│ alias · join condition · operator</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section class="claim" id="guarantee">
+  <div class="wrap inner">
+    <div class="stack">
+      <p class="eyebrow">The guarantee</p>
+      <h2>It cannot change what your SQL means.</h2>
+      <p>
+        Every statement is re-parsed after formatting and compared against the input as a
+        syntax tree. If the output would differ semantically — or if the engine doesn't fully
+        model the construct — that statement is passed through <strong>byte-identical</strong>
+        with a warning instead.
+      </p>
+      <p style="color:var(--ink-soft)">
+        Declining is the product, not a limitation. A formatter you can't trust on a repo you
+        haven't read is a formatter you won't run.
+      </p>
+    </div>
+    <ul class="rules">
+      <li><b>=</b><span>identifiers, exactly as you wrote them</span></li>
+      <li><b>=</b><span>string literals, byte for byte</span></li>
+      <li><b>=</b><span><code>::</code> or <code>CAST</code> — whichever you used</span></li>
+      <li><b>=</b><span><code>GROUP BY 1</code> stays positional</span></li>
+      <li><b>=</b><span>comments keep their style and position</span></li>
+      <li><b>=</b><span>anything unmodelled: untouched</span></li>
+    </ul>
+  </div>
+</section>
+
+<div class="wrap">
+  <section id="style">
+    <p class="eyebrow">What makes it different</p>
+    <h2>Alignment is the engine, not a pass at the end.</h2>
+    <div class="rows" style="margin-top:2.2rem">
+
+      <div class="row">
+        <div class="stack">
+          <h3>One column across the whole FROM block</h3>
+          <p style="color:var(--ink-soft)">
+            Every join's <code>ON</code> and <code>AND</code> condition lands in a single column
+            spanning the block, so the join logic reads as a table. Of the formatters surveyed,
+            none do this — their equivalents break the line instead of padding it.
+          </p>
+        </div>
+        <div>
+          <pre class="code" data-example="fromblock" data-lines="2-6"><b>FROM</b> customers        cust
+<b>INNER JOIN</b> orders     ord   <b>ON</b> ord.customer_id = cust.id
+<b>LEFT JOIN</b> order_lines lines <b>ON</b> lines.order_id  = ord.id
+<b>LEFT JOIN</b> addresses   addr  <b>ON</b> addr.order_id   = ord.id
+                           <b>AND</b> addr.kind       = 'shipping';</pre>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="stack">
+          <h3>Inside <code>$$</code> bodies too</h3>
+          <p style="color:var(--ink-soft)">
+            A plpgsql body is parsed and formatted like any other SQL, not held as an opaque
+            string. T-SQL <code>BEGIN … END</code> procedures get the same treatment.
+          </p>
+        </div>
+        <div>
+          <pre class="code" data-example="plpgsql"><b>CREATE OR REPLACE FUNCTION</b> get_customer_ltv(p_customer_id <b>INT</b>)
+<b>RETURNS NUMERIC</b>
+<b>LANGUAGE</b> plpgsql
+<b>AS</b> $$
+
+<b>DECLARE</b> v_ltv <b>NUMERIC</b>;
+
+<b>BEGIN</b>
+
+<b>SELECT SUM</b>(total) <b>INTO</b> v_ltv
+<b>FROM</b> orders
+<b>WHERE</b> customer_id = p_customer_id
+  <b>AND</b> status      = 'complete';
+
+<b>RETURN</b> v_ltv;
+
+<b>END</b>;
+$$;</pre>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="stack">
+          <h3>dbt models, not just plain SQL</h3>
+          <p style="color:var(--ink-soft)">
+            Jinja expressions are masked with same-width placeholders, so the alias column is
+            measured against <code>{{ ref('customers') }}</code> as it reads, not against the
+            mask — and the template comes back untouched.
+          </p>
+        </div>
+        <div>
+          <pre class="code" data-example="dbt"><b>SELECT</b> o.id
+     , o.total
+     , c.email
+     , {{ dbt_utils.star(ref('orders')) }}
+<b>FROM</b> {{ ref('orders') }}    o
+<b>JOIN</b> {{ ref('customers') }} c <b>ON</b> c.id = o.customer_id
+<b>WHERE</b> o.status = 'complete'
+  <b>AND</b> o.total  &gt; 0;</pre>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="configure">
+    <p class="eyebrow">Configure</p>
+    <h2>Pick a preset. Override what you disagree with.</h2>
+    <p style="margin-top:1rem;color:var(--ink-soft)">
+      Nine of ten published SQL style guides produce unpadded output, so the alignment is a
+      switch, not a sermon. Settings live in <code>.sqlalign.toml</code> or a
+      <code>[tool.sqlalign]</code> table, discovered by walking up from each file.
+    </p>
+
+    <div class="grid3" style="margin-top:1.8rem">
+      <div class="card">
+        <h3>house</h3>
+        <p>The columnar default: aligned, leading separators, <code>ON</code> inline.</p>
+      </div>
+      <div class="card">
+        <h3>compact</h3>
+        <p>Same line structure, no alignment padding. The widest-reach starting point.</p>
+      </div>
+      <div class="card">
+        <h3>dbt</h3>
+        <p>Lowercase keywords, the list stacked under a bare <code>select</code> at 4, trailing commas, unpadded. One deviation: a CTE body indents 2, not 4.</p>
+      </div>
+      <div class="card">
+        <h3>gitlab</h3>
+        <p>Their published guide, reproduced from the linter-processed example in their handbook. <code>AS</code> on table aliases; column aliases the only thing aligned.</p>
+      </div>
+      <div class="card">
+        <h3>river</h3>
+        <p>Holywell's style: root keywords right-aligned to a six-column gutter, joins on the far side of it, otherwise unpadded.</p>
+      </div>
+      <div class="card">
+        <h3>trailing</h3>
+        <p>The alignment kept, but commas and <code>AND</code>/<code>OR</code> moved to the end of the line.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap" style="margin-top:1.8rem">
+      <table>
+        <thead><tr><th>Setting</th><th>Default</th><th>Controls</th></tr></thead>
+        <tbody>
+          <tr><td><code>align</code></td><td>true</td><td>Column padding on or off</td></tr>
+          <tr><td><code>align_targets</code></td><td>all six</td><td>Which columns are padded: aliases, operators, join_conditions, case_results, column_types, column_constraints</td></tr>
+          <tr><td><code>comma_position</code></td><td>leading</td><td>Separator commas lead or trail the line</td></tr>
+          <tr><td><code>boolean_operator_position</code></td><td>leading</td><td>Where <code>AND</code>/<code>OR</code> sit when a predicate spans lines</td></tr>
+          <tr><td><code>on_placement</code></td><td>inline</td><td>Whether a join's <code>ON</code> drops below the table reference</td></tr>
+          <tr><td><code>keyword_case</code></td><td>upper</td><td>Case for keywords, functions and type names</td></tr>
+          <tr><td><code>select_placement</code></td><td>inline</td><td>Whether the first select item rides the <code>SELECT</code> line</td></tr>
+          <tr><td><code>select_indent</code></td><td>2</td><td>How far the list indents when it starts below <code>SELECT</code></td></tr>
+          <tr><td><code>clause_keyword_align</code></td><td>left</td><td>Root clause keywords flush left, or right-aligned into a river</td></tr>
+          <tr><td><code>river_gutter</code></td><td>6</td><td>The column a river aligns them to</td></tr>
+          <tr><td><code>table_alias_style</code></td><td>bare</td><td><code>FROM orders o</code> or <code>FROM orders AS o</code></td></tr>
+          <tr><td><code>width</code></td><td>100</td><td>Target line width for wrapping</td></tr>
+          <tr><td><code>blank_lines_between_statements</code></td><td>unset</td><td>Unset means one blank line only between two multi-line statements</td></tr>
+          <tr><td><code>protect_templating</code></td><td>true</td><td>Mask Jinja/dbt expressions before formatting</td></tr>
+          <tr><td><code>format_dollar_bodies</code></td><td>true</td><td>Format inside <code>$$</code> procedure bodies</td></tr>
+          <tr><td><code>neq_style</code> · <code>decimal_style</code></td><td><code>!=</code> · <code>NUMERIC</code></td><td>The only two spellings sqlalign picks for you, because the parser collapses each pair</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="install">
+    <p class="eyebrow">Install</p>
+    <h2>One command, one dependency.</h2>
+    <div class="compare" style="margin-top:1.8rem">
+      <div class="stack">
+        <pre class="code"><i># install the CLI</i>
+uv tool install .
+
+<i># format in place</i>
+sqlalign query.sql
+
+<i># or a whole tree</i>
+sqlalign .
+
+<i># see what would change, write nothing</i>
+sqlalign --diff .
+
+<i># CI gate</i>
+sqlalign --check .</pre>
+        <p style="font-size:var(--step--1);color:var(--ink-faint)">
+          Python 3.12+. The only runtime dependency is sqlglot, pinned to a tested line.
+        </p>
+      </div>
+      <div class="stack">
+        <p class="filelabel">.sqlalign.toml</p>
+        <pre class="code">preset                = "house"
+width                 = 100
+comma_position        = "leading"
+keyword_case          = "upper"
+exclude               = ["vendor/*", "*.gen.sql"]</pre>
+        <p style="font-size:var(--step--1);color:var(--ink-faint)">
+          Precedence: defaults → preset → config file → flags. An unknown key is an error, so a
+          typo can't leave you believing you have a setting you don't.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">How it compares</p>
+    <h2>What it is, and what it leaves to others.</h2>
+    <p style="margin-top:1rem;color:var(--ink-soft)">
+      Alignment isn't unique to sqlalign — sqlfluff aligns column aliases, and pgFormatter and
+      DataGrip both format <code>$$</code> bodies. This page won't pretend otherwise.
+    </p>
+    <div class="grid3" style="margin-top:1.6rem">
+      <div class="card">
+        <h3>Not a linter</h3>
+        <p>It won't unify your cast styles, force aliases, or rewrite <code>GROUP BY</code>
+           references. That's sqlfluff's job, and the two are designed to run together.</p>
+      </div>
+      <div class="card">
+        <h3>Not a transpiler</h3>
+        <p>It formats the dialect you give it. It won't translate Postgres into T-SQL — the
+           safety model doesn't support it.</p>
+      </div>
+      <div class="card">
+        <h3>Honest about limits</h3>
+        <p>The AST check is a within-dialect guarantee, and comments sit outside it — which is
+           why comment handling is pinned by byte-exact fixtures instead.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap foot">
+    <div>sqlalign — columnar SQL formatting with a semantic guarantee</div>
+    <div><a href="v1/index.html">Documentation</a> · <a href="v1/getting-started.html">Getting started</a> · <a href="v1/settings.html">Settings reference</a></div>
+  </div>
+</footer>
