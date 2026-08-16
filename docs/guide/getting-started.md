@@ -16,7 +16,7 @@ sqlalign needs **Python 3.12 or newer** and has exactly one runtime dependency:
 shapes, so the pin is deliberate — see the comment in `pyproject.toml`.)
 
 ```sh
-uv tool install .
+pip install sqlalign
 ```
 
 That installs a `sqlalign` command on your PATH. Check it:
@@ -25,10 +25,14 @@ That installs a `sqlalign` command on your PATH. Check it:
 sqlalign --help
 ```
 
-For development on sqlalign itself, work from the repo venv instead — this adds
-the dev tools (`pytest`, `ruff`, `sqlfluff`):
+`uv tool install sqlalign` does the same while keeping it out of your project's
+environment.
+
+For development on sqlalign itself, work from a clone instead — this adds the
+dev tools (`pytest`, `ruff`, `sqlfluff`):
 
 ```sh
+git clone https://github.com/pua2/sqlalign && cd sqlalign
 uv sync
 ```
 
@@ -490,12 +494,12 @@ which is exactly what a CI runner treats as a failure:
 sqlalign --check .
 ```
 
-Wrapped in a job step, with uv already on the runner:
+Wrapped in a job step:
 
 ```yaml
 - name: Check SQL formatting
   run: |
-    uv tool install .
+    pip install sqlalign
     sqlalign --check .
 ```
 

@@ -113,16 +113,18 @@ else is an error unless you pass `--no-strict-config`.
 `neq_style` · `on_placement` · `preset` · `protect_templating` · `river_gutter` ·
 `select_indent` · `select_placement` · `table_alias_style` · `width`
 
-`--dialect` and `--line-ending` are the only settings with no config key. The
-three `--no-*` flags map onto the positive keys: `--no-align` is `align = false`,
-`--no-protect-templating` is `protect_templating = false`, `--no-format-bodies`
-is `format_dollar_bodies = false`.
+`--dialect` and `--line-ending` are the only settings with no config key. Three
+of the four `--no-*` flags map onto the positive keys: `--no-align` is
+`align = false`, `--no-protect-templating` is `protect_templating = false`, and
+`--no-format-bodies` is `format_dollar_bodies = false`. The fourth,
+`--no-strict-config`, is not a style setting at all — it changes how the config
+file itself is read.
 
 ## Style
 
 | Flag | Default | What it does |
 |---|---|---|
-| `--preset {compact,dbt,house,trailing}` | none (the `house` defaults) | Named starting point. Sets a **base** that config keys and flags then layer on top of, so `--preset compact --comma-position trailing` means both. Not passing it leaves any `preset` key in your config file in force. |
+| `--preset {compact,dbt,gitlab,house,river,trailing}` | none (the `house` defaults) | Named starting point. Sets a **base** that config keys and flags then layer on top of, so `--preset compact --comma-position trailing` means both. Not passing it leaves any `preset` key in your config file in force. |
 | `--width WIDTH` | `100` | Target line width for wrapping decisions. Not a hard cap: a construct anchored deep in an indent gets a floor of `anchor + 60`, plus 5 characters of grace, so alignment is never sacrificed to shave two columns. |
 | `--blank-lines-between-statements N` | unset | Force N blank lines between every pair of statements. Unset is the house rule: exactly one blank line between two **multi-line** statements and none otherwise, so a run of one-line `GRANT`s stays a block. `0` removes them all. |
 | `--no-align` | off *(aligned)* | Emit one space between tokens instead of padding them into columns. Same line structure, no padding — this is what 9 of 10 published SQL style guides call for. |

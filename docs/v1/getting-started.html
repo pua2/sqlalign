@@ -198,14 +198,17 @@ not rewrite your SQL for you.</p>
 <p>sqlalign needs <strong>Python 3.12 or newer</strong> and has exactly one runtime dependency:
 <code>sqlglot</code>, pinned to the <code>30.14.x</code> line. (The layout engine reads exact AST
 shapes, so the pin is deliberate — see the comment in <code>pyproject.toml</code>.)</p>
-<pre><code class="language-sh">uv tool install .
+<pre><code class="language-sh">pip install sqlalign
 </code></pre>
 <p>That installs a <code>sqlalign</code> command on your PATH. Check it:</p>
 <pre><code class="language-sh">sqlalign --help
 </code></pre>
-<p>For development on sqlalign itself, work from the repo venv instead — this adds
-the dev tools (<code>pytest</code>, <code>ruff</code>, <code>sqlfluff</code>):</p>
-<pre><code class="language-sh">uv sync
+<p><code>uv tool install sqlalign</code> does the same while keeping it out of your project's
+environment.</p>
+<p>For development on sqlalign itself, work from a clone instead — this adds the
+dev tools (<code>pytest</code>, <code>ruff</code>, <code>sqlfluff</code>):</p>
+<pre><code class="language-sh">git clone https://github.com/pua2/sqlalign &amp;&amp; cd sqlalign
+uv sync
 </code></pre>
 <h2 id="your-first-format">Your first format<a class="anchor" href="#your-first-format" aria-label="Link to this section">#</a></h2>
 <p>Save this as <code>revenue.sql</code>:</p>
@@ -565,10 +568,10 @@ for <code>sqlalign --check $files</code> and drop the <code>git add</code>.</p>
 which is exactly what a CI runner treats as a failure:</p>
 <pre><code class="language-sh">sqlalign --check .
 </code></pre>
-<p>Wrapped in a job step, with uv already on the runner:</p>
+<p>Wrapped in a job step:</p>
 <pre><code class="language-yaml">- name: Check SQL formatting
   run: |
-    uv tool install .
+    pip install sqlalign
     sqlalign --check .
 </code></pre>
 <p>Use <code>--diff</code> instead of <code>--check</code> if you want the log to show what is wrong

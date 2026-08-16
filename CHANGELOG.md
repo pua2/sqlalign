@@ -2,6 +2,22 @@
 
 ## 1.0.2
 
+### Documentation
+
+Install instructions said `uv tool install .`, which installs from a clone. That
+was the only option before the package was published; it is now
+`pip install sqlalign`. The CI example in the guide told you to run that same
+command inside your own repository, where it would have tried to install your
+SQL repo as a Python package.
+
+Also corrected: `--preset` documented four of its six values (`gitlab` and
+`river` were missing), three places still said the project had no CI, and the
+README linked the settings reference as a raw HTML file rather than to the
+published site. Documented choice lists are now checked against the argument
+parser by a test.
+
+### Fixed
+
 `--lint` no longer warns about a sqlfluff patch release.
 
 The coexistence config is checked against a known sqlfluff, and any difference
