@@ -1,0 +1,103 @@
+name: Release
+
+# Publishing runs in two steps, deliberately.
+#
+#   1. Every push of a `v*` tag builds the artifacts and publishes them to
+#      TestPyPI, which can be re-uploaded under a fresh version and is where a
+#      broken README render or a bad classifier should be found.
+#   2. Publishing to PyPI proper is a manual run of this workflow. A version
+#      number on PyPI can never be reused, so that step asks first.
+#
+# Both use Trusted Publishing: PyPI accepts a short-lived OIDC token minted by
+# this workflow instead of a stored API token. Nothing to rotate, nothing to
+# leak. It requires a publisher configured on the PyPI side naming this
+# repository, this filename, and the environment below.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to publish"
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked --all-extras
+
+      # The artifacts are what ships, so they are checked, not assumed.
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Build
+        run: uv build
+
+      - name: Check the artifacts
+        run: uvx twine check dist/*
+
+      # The tag and the packaged version must agree, or the release is named
+      # one thing and installs as another.
+      - name: Tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          built=$(ls dist/*.tar.gz | sed -E 's/.*sqlalign-(.*)\.tar\.gz/\1/')
+          echo "tag=$tag built=$built"
+          [ "$tag" = "$built" ] || { echo "::error::tag $tag != version $built"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/sqlalign
+    permissions:
+      id-token: write        # required to mint the OIDC token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          # A tag re-run should not fail the release over a version that is
+          # already on TestPyPI.
+          skip-existing: true
+
+  pypi:
+    needs: build
+    if: inputs.target == 'pypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sqlalign
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

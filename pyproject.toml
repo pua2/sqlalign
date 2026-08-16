@@ -35,8 +35,8 @@ dependencies = ["sqlglot>=30.14,<30.15"]
 lint = ["sqlfluff>=4.2,<5"]
 
 [project.urls]
-Homepage = "https://pua2.github.io/sqlalign/"
-Documentation = "https://pua2.github.io/sqlalign/v1/"
+Homepage = "https://sqlalign.lumaru.app/"
+Documentation = "https://sqlalign.lumaru.app/v1/"
 Source = "https://github.com/pua2/sqlalign"
 Issues = "https://github.com/pua2/sqlalign/issues"
 
