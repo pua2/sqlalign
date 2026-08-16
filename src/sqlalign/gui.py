@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import pathlib
 import queue
+import sys
 import threading
 
 from sqlalign.config import Width
@@ -242,7 +243,8 @@ def run(dialect: str = "postgres") -> int:      # pragma: no cover - needs a dis
     except ImportError:
         print("sqlalign: --gui needs tkinter, which is missing from this Python.\n"
               "          On Debian/Ubuntu: apt install python3-tk\n"
-              "          On macOS with pyenv: install a Python built against Tcl/Tk.")
+              "          On macOS with pyenv: install a Python built against Tcl/Tk.",
+              file=sys.stderr)
         return 2
 
     root = tk.Tk()
