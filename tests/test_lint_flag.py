@@ -157,3 +157,34 @@ def test_a_version_mismatch_warns(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(cli, "version_warning", lintmod.version_warning)
     main(["--lint", "--check", str(_sql(tmp_path))])
     assert "rules may have moved" in capsys.readouterr().err
+
+
+# The warning compares the sqlfluff SERIES, not the exact release. Warning on a
+# patch bump would fire for every user between a sqlfluff point release and the
+# next sqlalign, about a release that cannot have moved a rule name.
+
+def _installed(monkeypatch, version):
+    import sqlalign.lint as lintmod
+    monkeypatch.setattr(lintmod, "sqlfluff_version", lambda: version)
+    return lintmod
+
+
+def test_a_patch_release_of_the_checked_series_is_silent(monkeypatch):
+    from sqlalign.sqlfluffconfig import TESTED_SQLFLUFF
+    major, minor = TESTED_SQLFLUFF.split(".")[:2]
+    lintmod = _installed(monkeypatch, f"{major}.{minor}.99")
+    assert lintmod.version_warning() is None
+
+
+def test_an_older_sqlfluff_is_silent(monkeypatch):
+    """Being behind is bounded by the floor on the `lint` extra, which the
+    coexistence tests verify. Only being AHEAD of them is unverified."""
+    assert _installed(monkeypatch, "4.2.0").version_warning() is None
+
+
+def test_a_newer_series_warns(monkeypatch):
+    assert "rules may have moved" in _installed(monkeypatch, "9.9.9").version_warning()
+
+
+def test_an_unreadable_version_warns_rather_than_assuming(monkeypatch):
+    assert "rules may have moved" in _installed(monkeypatch, "unreleased").version_warning()

@@ -164,12 +164,28 @@ def test_it_stamps_the_sqlfluff_version_it_was_checked_against():
     assert TESTED_SQLFLUFF in sqlfluff_config(HOUSE, "postgres")
 
 
-def test_the_stamped_version_matches_what_is_installed():
-    """If these drift, the rule names and config keys below may have moved."""
+def test_the_mappings_are_not_behind_the_installed_sqlfluff():
+    """The mappings are only verified against `TESTED_SQLFLUFF`, and the tests
+    above are what verify them. A newer series installed means nothing has
+    checked its rule names, so this failing is the alarm doing its job: run the
+    suite against that release, then bump `TESTED_SQLFLUFF`.
+
+    The series, not the patch — the tests above run the real linter, and a patch
+    release cannot move a rule name past them.
+    """
     import sqlfluff
-    assert sqlfluff.__version__ == TESTED_SQLFLUFF, (
-        f"sqlfluff is {sqlfluff.__version__}, config was checked against "
-        f"{TESTED_SQLFLUFF} — re-verify the mappings and bump TESTED_SQLFLUFF")
+
+    from sqlalign.lint import _series
+    assert _series(sqlfluff.__version__) <= _series(TESTED_SQLFLUFF), (
+        f"sqlfluff is {sqlfluff.__version__}, mappings were checked against "
+        f"{TESTED_SQLFLUFF} — re-verify them and bump TESTED_SQLFLUFF")
+
+
+def test_the_checked_version_is_a_readable_version():
+    """`version_warning` warns on anything it cannot compare, so a typo here
+    would warn every user rather than nobody."""
+    from sqlalign.lint import _series
+    assert _series(TESTED_SQLFLUFF) is not None
 
 
 # ---- CLI -----------------------------------------------------------------

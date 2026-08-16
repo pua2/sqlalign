@@ -162,12 +162,31 @@ def _lint_bodies(text: str, args: list[str], path: Path, dialect: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _series(version: str) -> tuple[int, int] | None:
+    """`(major, minor)` from a version string, or None if it does not parse."""
+    try:
+        major, minor = version.split(".")[:2]
+        return int(major), int(minor)
+    except ValueError:
+        return None
+
+
 def version_warning() -> str | None:
-    """A note when the installed sqlfluff is not the one the mappings were
-    checked against: rule names and config keys are versioned surface, and a
-    silent mismatch reads as sqlalign generating a broken config."""
+    """A note when the installed sqlfluff is NEWER than the release the mappings
+    were checked against.
+
+    Only the series is compared. A patch release does not add or rename a rule,
+    so warning on one would fire for every user in the window between a sqlfluff
+    point release and the next sqlalign — noise that says nothing about their
+    config. An OLDER sqlfluff is silent too: the floor on the `lint` extra is
+    what bounds that, and it is verified.
+
+    Anything this cannot positively rule out warns, since the cost of the note
+    is far below the cost of a config whose rules have quietly moved.
+    """
     installed = sqlfluff_version()
-    if installed != TESTED_SQLFLUFF:
-        return (f"sqlfluff {installed} installed, coexistence config was checked "
-                f"against {TESTED_SQLFLUFF} — rules may have moved")
-    return None
+    here, checked = _series(installed), _series(TESTED_SQLFLUFF)
+    if here is not None and checked is not None and here <= checked:
+        return None
+    return (f"sqlfluff {installed} installed, coexistence config was checked "
+            f"against {TESTED_SQLFLUFF} — rules may have moved")

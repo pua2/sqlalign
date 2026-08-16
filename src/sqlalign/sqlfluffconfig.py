@@ -35,7 +35,10 @@ from sqlalign.style import Style
 # so a future reader can tell whether the config predates their linter: rule
 # names and config keys are versioned surface, and a silent mismatch reads as
 # "sqlalign generated a broken config" rather than "these have drifted apart".
-TESTED_SQLFLUFF = "4.2.2"
+#
+# Bumping it means re-running the coexistence tests against that release, which
+# exercise every rule and config key below through the real linter.
+TESTED_SQLFLUFF = "4.3.0"
 
 # style knob -> (sqlfluff rule, config key, {style value: sqlfluff value})
 _MAPPINGS = (

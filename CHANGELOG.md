@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.2
+
+`--lint` no longer warns about a sqlfluff patch release.
+
+The coexistence config is checked against a known sqlfluff, and any difference
+warned. sqlfluff 4.3.0 then shipped, so every `--lint` run printed a note about
+a release that had moved nothing sqlalign uses. The check now compares the
+series rather than the exact release, and is silent for a sqlfluff older than
+the checked one -- the floor on the `lint` extra is what bounds that, and CI
+now runs the coexistence tests against it.
+
+The mappings are verified against sqlfluff 4.3.0.
+
 ## 1.0.1
 
 No functional change. `1.0.0` was tagged before the package was ever published,

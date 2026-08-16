@@ -1,6 +1,6 @@
 [project]
 name = "sqlalign"
-version = "1.0.1"
+version = "1.0.2"
 description = "A SQL formatter that cannot change what your SQL means"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -47,7 +47,7 @@ sqlalign = "sqlalign.cli:main"
 dev = [
     "pytest>=8",
     "ruff>=0.16.2",
-    "sqlfluff>=4.2,<5",
+    "sqlfluff>=4.3,<5",
     # Docs only. The site is GENERATED and committed, so nothing at runtime or
     # on GitHub Pages needs this --  is the only consumer.
     "markdown-it-py>=3",
