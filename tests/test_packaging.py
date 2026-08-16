@@ -58,3 +58,18 @@ def test_the_lint_extra_is_the_only_extra_and_sqlfluff_is_not_required():
     """
     assert set(PROJECT["optional-dependencies"]) == {"lint"}
     assert not any("sqlfluff" in d for d in PROJECT["dependencies"])
+
+
+def test_no_scratch_files_are_tracked_at_the_repository_root():
+    """Everything at the root ships in the sdist, so a stray file a debugging
+    session left behind becomes part of a release. `victim.sql` and
+    `victim2.sql` reached a merged commit exactly this way.
+
+    SQL belongs in `samples/` or `tests/fixtures/`; the root holds packaging and
+    prose only.
+    """
+    allowed_suffixes = {".md", ".toml", ".lock", ".sqlfluff", ""}
+    strays = [p.name for p in ROOT.iterdir()
+              if p.is_file() and not p.name.startswith(".")
+              and p.suffix not in allowed_suffixes]
+    assert not strays, f"unexpected files at the repository root: {strays}"

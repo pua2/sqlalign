@@ -12,6 +12,13 @@ the original gone. Files are now written to a neighbour and renamed into place,
 so what is on disk is either the whole old file or the whole new one. Symlinks
 are written through rather than replaced, and permissions are carried across.
 
+**A file that was not UTF-8 raised a traceback and aborted the run.** The read
+is UTF-8, and a `UnicodeDecodeError` is not an `OSError`, so it escaped the
+per-file handler and took the whole invocation with it — every file after the
+first undecodable one was silently never formatted. Such a file is now reported
+and left exactly as it is: guessing an encoding would mean writing it back in a
+different one, which is the kind of change sqlalign exists not to make.
+
 **An unwritable file raised a traceback and aborted the run.** A read-only file
 now reports `sqlalign: [Errno 13] Permission denied: <path>`, exits `2`, and
 leaves the remaining files to process -- which is what the exit-code table
