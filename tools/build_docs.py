@@ -39,7 +39,31 @@ from sqlalign.style import PRESETS, preset_style  # noqa: E402
 
 REPO = "https://github.com/pua2/sqlalign"
 VERSION = "v1"
-VERSIONS = [("v1", "1.0 (current)")]
+
+
+def _released() -> str:
+    """The `major.minor` this build documents, read from pyproject.
+
+    Typed out, the selector said "1.0 (current)" while 1.1 was being released --
+    a label nobody rereads, on the one control whose whole job is telling a
+    reader which version they are looking at.
+
+    Read from the FILE rather than from `sqlalign.__version__`, which resolves
+    through installed-distribution metadata: the site is generated and committed,
+    so a build that depends on which version happens to be installed would
+    produce different bytes on different machines and turn the staleness test
+    into a coin flip.
+    """
+    import re
+
+    text = (pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml").read_text()
+    version = re.search(r'^version = "([^"]+)"', text, re.M).group(1)
+    return ".".join(version.split(".")[:2])
+
+
+# A directory per docs line, newest first. `v1` covers the 1.x releases; a
+# breaking change means building into a new directory and leaving this one alone.
+VERSIONS = [("v1", f"{_released()} (current)")]
 
 # (slug, source markdown, nav title, one-line blurb for the docs index)
 PAGES = [
@@ -225,9 +249,14 @@ run still exits <code>0</code>.</p>
 
 # ---- page chrome ----------------------------------------------------------
 
+# Held out of the f-string below: a backslash inside an f-string expression is a
+# syntax error before Python 3.12, and the alternative is escaping a quote.
+_CURRENT_PAGE = " class='here'"
+
+
 def shell(slug: str, title: str, body: str, outline, css: str, js: str) -> str:
     nav = "\n".join(
-        f'<a href="{s}.html"{" class=\'here\'" if s == slug else ""}>{html.escape(t)}</a>'
+        f'<a href="{s}.html"{_CURRENT_PAGE if s == slug else ""}>{html.escape(t)}</a>'
         for s, _src, t, _b in PAGES)
     toc = "".join(
         f'<a class="lvl{lvl}" href="#{sl}">{html.escape(tx)}</a>'

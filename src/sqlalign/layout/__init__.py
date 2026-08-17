@@ -279,6 +279,25 @@ def column_alias(item: exp.Alias, dialect: str) -> str:
     return render_expr(item.args["alias"], dialect)
 
 
+def cte_name(cte: exp.CTE, dialect: str) -> str:
+    """`cte`'s name as it should be PRINTED, quoting included.
+
+    The third node type to have this bug, after `table_alias` and
+    `column_alias`. `.alias` returns the identifier's NAME, so `WITH "cte" AS`
+    came out as bare `WITH cte AS` -- and in Postgres those are two different
+    relations, quite apart from the names that are a syntax error unquoted.
+
+    Any tool that generates SQL tends to quote every identifier it emits --
+    sqlglot's own optimizer does -- so this is not a rare spelling. It is what
+    a whole class of machine-written SQL looks like.
+
+    The name alone, not the whole `TableAlias`: rendering that node would splice
+    a column list back in, and `WITH cte(a, b)` declines as unsupported before
+    this point.
+    """
+    return render_expr(cte.args["alias"].this, dialect)
+
+
 def table_alias(table: exp.Expression, dialect: str) -> str | None:
     """`table`'s alias as it should be PRINTED, or None if it has none.
 

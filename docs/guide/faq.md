@@ -7,8 +7,8 @@ reproduce exactly is emitted **byte-identical** rather than approximated:
 
 ```console
 $ sqlalign --stdout mixed.sql
-sqlalign: mixed.sql: unsupported construct, passed through: select distinct on (a) a, b from t;
-select distinct on (a) a, b from t;
+sqlalign: mixed.sql: unsupported construct (CTE column list), passed through: with c(a, b) as (select 1, 2) select a f
+with c(a, b) as (select 1, 2) select a from c;
 SELECT x
      , y
 FROM z
@@ -360,11 +360,19 @@ Three honest caveats on the guarantee:
    valid to sqlglot but invalid to your engine, because the round trip never
    leaves sqlglot's grammar. That is why only three audited dialects are offered —
    see [Dialects](dialects.md#adding-a-dialect-is-more-than-registering-a-parser).
-2. **Comments are excluded from the AST comparison.** A comment cannot change
-   meaning, so stripping it is correct for semantics — but it means a dropped or
-   restyled comment would be silent as far as the safety net is concerned. The
-   byte-exact golden fixtures are the guard there, which is why the comment engine
-   declines any comment position it does not model rather than guessing.
+2. **Comments are compared separately, because they are not in the AST.** sqlglot
+   hangs a comment off the token it precedes rather than putting it in the tree,
+   so the AST comparison passes whether or not a comment survived. That was once
+   a real gap — a lost comment was invisible to the one check meant to catch a
+   change in meaning, and two of the worst bugs this project had were exactly
+   that: `SELECT a -- c,` lost a separator, and `SELECT a -- note;` left the
+   statement unterminated so it swallowed the next one. Since 1.1 each statement
+   is also compared on the comments it carries, and one that would differ is
+   passed through like any other. Inside a `$$` body the tokenizer sees one
+   string literal, so those statements are compared structurally instead — and
+   the body renderer holds the same line by construction: a same-line trailing
+   comment is reproduced verbatim, and a comment position it does not model
+   declines as `comment inside a procedural clause` rather than guessing.
 3. **Some distinctions are destroyed before the comparison exists.** Where
    sqlglot collapses two spellings into one node, both sides collapse identically.
    Where the two are true synonyms this is harmless; where they are not, a
@@ -376,18 +384,34 @@ test suite asserts that byte-for-byte for all 29 golden fixtures.
 
 ## How fast is it?
 
-Fast enough for a pre-commit hook on a whole repo. `sqlalign --check` over corpora
-built from the golden fixtures, on an Apple M3 Pro:
+Fast enough for a pre-commit hook on a whole repository. Reproduce these with
+`uv run python tools/benchmark.py`, which builds a tree from the vendored corpus
+and times the CLI end to end — interpreter start, imports and all, because that
+is what you actually wait for.
 
-| Workload | Wall time |
-|---|---|
-| One small file | 0.09 s |
-| 480 files, ~6,500 lines total | 1.1 s |
-| One file, 500 medium join statements | 1.7 s |
+On an Apple M3 Pro, Python 3.12, 500 files totalling 1.4 MB:
 
-About 0.09 s of every run is Python startup plus importing sqlglot, so a
+| | Wall time | Rate |
+|---|---|---|
+| `sqlalign --check .` | 2.8 s | 180 files/s |
+| Rewriting in place | 2.8 s | 177 files/s |
+| Startup alone | 0.10 s | — |
+
+Which projects to about **5.5 s for a thousand files** and **54 s for ten
+thousand**.
+
+**There is no `--jobs` flag, deliberately.** These numbers are why: a thousand-file
+project checks in the time a test suite spends collecting, and the case that
+actually runs often — a pre-commit hook over the handful of files you changed —
+is dominated by startup rather than by formatting. Parallelism would buy a few
+seconds on the largest repositories and cost ordered output, aggregated
+`--report` counts, and a second way for the tool to fail. If your repository is
+large enough that this is wrong, that is worth an issue.
+
+About 0.10 s of every run is Python startup plus importing sqlglot, so a
 one-file-per-invocation hook pays that each time. If you are wiring up a
-pre-commit hook, pass all the changed files in one invocation rather than looping.
+pre-commit hook, pass all the changed files in one invocation rather than looping
+— which is what the [hooks in this repository](getting-started.md) do.
 
 sqlalign never connects to a database. It parses, lays out, and re-parses — that
 is all it does, and it works on files that reference tables you do not have.

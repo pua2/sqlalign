@@ -53,7 +53,12 @@ def identifier_names(statement: str, dialect: str) -> set[str]:
 
     for tree in trees:
         for ident in tree.find_all(exp.Identifier):
-            names.add(ident.this)
+            # Only bare identifiers. A quoted one renders inside quotes, which
+            # `apply`'s scanner never enters -- adding its text here did nothing
+            # for it and immunised every KEYWORD spelled the same way, so
+            # `SELECT a AS "FROM"` left the real FROM upper in a lowercase file.
+            if not ident.args.get("quoted"):
+                names.add(ident.this)
         for heredoc in tree.find_all(exp.Heredoc):        # plpgsql body
             body = heredoc.this
             if isinstance(body, str):
@@ -78,7 +83,8 @@ def _body_identifiers(body: str, dialect: str) -> set[str]:
             if tree is None:
                 continue
             for ident in tree.find_all(exp.Identifier):
-                names.add(ident.this)
+                if not ident.args.get("quoted"):
+                    names.add(ident.this)
     return names
 
 

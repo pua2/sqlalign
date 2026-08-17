@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -187,7 +187,7 @@ dl.meta dd { margin:0; }
 <a href="dialects.html">Dialects</a>
 <a href="architecture.html">Architecture</a>
 <a href="faq.html">FAQ</a></nav>
-  <main id="main"><h2 id="all-flags">All flags<a class="anchor" href="#all-flags">#</a></h2><p>Generated from the parser, so it cannot fall behind it. The sections below explain the ones that need more than a line.</p><table><thead><tr><th>Flag</th><th>Description</th></tr></thead><tbody><tr><td><code>-h</code>, <code>--help</code></td><td>show this help message and exit</td></tr><tr><td><code>--version</code></td><td>print the version and exit</td></tr><tr><td><code>--check</code></td><td>do not write; exit 1 if any file would change</td></tr><tr><td><code>--stdout</code></td><td>write the result to stdout instead of the file</td></tr><tr><td><code>--diff</code></td><td>write nothing; print a unified diff of what would change (exit 1 if anything would)</td></tr><tr><td><code>--dialect</code> <code>postgres</code>, <code>redshift</code>, <code>tsql</code></td><td>the SQL dialect to parse and print (default: postgres)</td></tr><tr><td><code>--line-ending</code> <code>auto</code>, <code>lf</code>, <code>crlf</code></td><td>line endings to write: auto preserves the file's own (default)</td></tr><tr><td><code>--config</code></td><td>use this config file instead of discovering one</td></tr><tr><td><code>--exclude</code></td><td>skip files matching this glob when expanding a directory (repeatable; also settable as <code>exclude</code> in a config file)</td></tr><tr><td><code>--isolated</code></td><td>ignore any config file and use the built-in defaults</td></tr><tr><td><code>--show-config</code></td><td>print the effective settings as TOML and exit</td></tr><tr><td><code>--gui</code></td><td>(experimental) open the settings panel with a live preview, and exit</td></tr><tr><td><code>--report</code></td><td>print a coverage summary: how many statements were formatted, and what the rest declined on. Adds output without changing the mode, so on its own it still rewrites; pair it with <code>--check</code> to survey without writing</td></tr><tr><td><code>--max-declines</code></td><td>exit 1 if more than N statements are passed through unformatted (implies --report)</td></tr><tr><td><code>--lint</code></td><td>after formatting, run sqlfluff over the result (needs the optional <code>sqlalign[lint]</code> extra)</td></tr><tr><td><code>--print-sqlfluff-config</code></td><td>print a .sqlfluff that lets sqlfluff run alongside sqlalign without fighting it, and exit</td></tr><tr><td><code>--no-strict-config</code></td><td>warn on unknown config keys instead of failing</td></tr><tr><td><code>--preset</code> <code>compact</code>, <code>dbt</code>, <code>gitlab</code>, <code>house</code>, <code>river</code>, <code>trailing</code></td><td>named starting point; config keys and flags layer on top</td></tr><tr><td><code>--width</code></td><td>column the formatter tries to stay inside; 0 turns it off</td></tr><tr><td><code>--blank-lines-between-statements</code></td><td>force N blank lines between every pair of statements (default: one only between two multi-line statements)</td></tr><tr><td><code>--no-align</code></td><td>emit one space between tokens instead of aligning them into columns (same line structure, no padding)</td></tr><tr><td><code>--no-protect-templating</code></td><td>do not mask Jinja/dbt template expressions before formatting</td></tr><tr><td><code>--no-format-bodies</code></td><td>leave dollar-quoted ($$) procedure and function bodies untouched</td></tr><tr><td><code>--align-targets</code></td><td>comma-separated alignment targets to keep. Default is every target except table_names, which is opt-in because it pads the FROM/JOIN keyword out to a shared table column. Valid: aliases, table_names, operators, join_conditions, case_results, column_types, column_constraints</td></tr><tr><td><code>--comma-position</code> <code>leading</code>, <code>trailing</code></td><td>where the separator comma sits in a stacked list (default: leading)</td></tr><tr><td><code>--boolean-operator-position</code> <code>leading</code>, <code>trailing</code></td><td>where AND/OR sit when a predicate spans lines (default: leading)</td></tr><tr><td><code>--on-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether a JOIN ON rides the table line or drops below it</td></tr><tr><td><code>--select-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether the first select item rides the SELECT line</td></tr><tr><td><code>--select-indent</code></td><td>columns the select list indents under --select-placement own_line (default: 2)</td></tr><tr><td><code>--body-blank-lines</code></td><td>blank lines between the elements of a $$ body (default: 1)</td></tr><tr><td><code>--clause-keyword-align</code> <code>left</code>, <code>river</code></td><td>root clause keywords flush left, or right-aligned to a river</td></tr><tr><td><code>--river-gutter</code></td><td>column a river right-aligns clause keywords to (default: 6)</td></tr><tr><td><code>--keyword-case</code> <code>upper</code>, <code>lower</code></td><td>case for keywords, function names and types (default: upper)</td></tr><tr><td><code>--neq-style</code> <code>!=</code>, <code><></code></td><td>spelling for the not-equal operator (default: !=)</td></tr><tr><td><code>--table-alias-style</code> <code>bare</code>, <code>as</code></td><td>print a table alias as <code>t a</code> (bare) or <code>t AS a</code></td></tr><tr><td><code>--decimal-style</code> <code>NUMERIC</code>, <code>DECIMAL</code></td><td>spelling for the NUMERIC/DECIMAL type (default: NUMERIC)</td></tr></tbody></table><pre><code>sqlalign [OPTIONS] FILE_OR_DIRECTORY...
+  <main id="main"><h2 id="all-flags">All flags<a class="anchor" href="#all-flags">#</a></h2><p>Generated from the parser, so it cannot fall behind it. The sections below explain the ones that need more than a line.</p><table><thead><tr><th>Flag</th><th>Description</th></tr></thead><tbody><tr><td><code>-h</code>, <code>--help</code></td><td>show this help message and exit</td></tr><tr><td><code>--version</code></td><td>print the version and exit</td></tr><tr><td><code>--check</code></td><td>do not write; exit 1 if any file would change</td></tr><tr><td><code>--stdout</code></td><td>write the result to stdout instead of the file</td></tr><tr><td><code>--diff</code></td><td>write nothing; print a unified diff of what would change (exit 1 if anything would)</td></tr><tr><td><code>--dialect</code> <code>postgres</code>, <code>redshift</code>, <code>tsql</code></td><td>the SQL dialect to parse and print (default: postgres)</td></tr><tr><td><code>--line-ending</code> <code>auto</code>, <code>lf</code>, <code>crlf</code></td><td>line endings to write: auto preserves the file's own (default)</td></tr><tr><td><code>--config</code></td><td>use this config file instead of discovering one</td></tr><tr><td><code>--exclude</code></td><td>skip files matching this glob when expanding a directory (repeatable; also settable as <code>exclude</code> in a config file)</td></tr><tr><td><code>--isolated</code></td><td>ignore any config file and use the built-in defaults</td></tr><tr><td><code>--show-config</code></td><td>print the effective settings as TOML and exit</td></tr><tr><td><code>--init</code></td><td>write a commented .sqlalign.toml in the current directory and exit; every setting is commented out, so the file changes nothing until you edit it</td></tr><tr><td><code>--gui</code></td><td>(experimental) open the settings panel with a live preview, and exit</td></tr><tr><td><code>--report</code></td><td>print a coverage summary: how many statements were formatted, and what the rest declined on. Adds output without changing the mode, so on its own it still rewrites; pair it with <code>--check</code> to survey without writing</td></tr><tr><td><code>--max-declines</code></td><td>exit 1 if more than N statements are passed through unformatted (implies --report)</td></tr><tr><td><code>--lint</code></td><td>after formatting, run sqlfluff over the result (needs the optional <code>sqlalign[lint]</code> extra)</td></tr><tr><td><code>--print-sqlfluff-config</code></td><td>print a .sqlfluff that lets sqlfluff run alongside sqlalign without fighting it, and exit</td></tr><tr><td><code>--no-strict-config</code></td><td>warn on unknown config keys instead of failing</td></tr><tr><td><code>--preset</code> <code>compact</code>, <code>dbt</code>, <code>gitlab</code>, <code>house</code>, <code>river</code>, <code>trailing</code></td><td>named starting point; config keys and flags layer on top</td></tr><tr><td><code>--width</code></td><td>column the formatter tries to stay inside; 0 turns it off</td></tr><tr><td><code>--blank-lines-between-statements</code></td><td>force N blank lines between every pair of statements (default: one only between two multi-line statements)</td></tr><tr><td><code>--no-align</code></td><td>emit one space between tokens instead of aligning them into columns (same line structure, no padding)</td></tr><tr><td><code>--no-protect-templating</code></td><td>do not mask Jinja/dbt template expressions before formatting</td></tr><tr><td><code>--no-format-bodies</code></td><td>leave dollar-quoted ($$) procedure and function bodies untouched</td></tr><tr><td><code>--align-targets</code></td><td>comma-separated alignment targets to keep. Default is every target except table_names, which is opt-in because it pads the FROM/JOIN keyword out to a shared table column. Valid: aliases, case_results, column_aliases, column_constraints, column_types, join_conditions, operators, table_aliases, table_names</td></tr><tr><td><code>--comma-position</code> <code>leading</code>, <code>trailing</code></td><td>where the separator comma sits in a stacked list (default: leading)</td></tr><tr><td><code>--boolean-operator-position</code> <code>leading</code>, <code>trailing</code></td><td>where AND/OR sit when a predicate spans lines (default: leading)</td></tr><tr><td><code>--on-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether a JOIN ON rides the table line or drops below it</td></tr><tr><td><code>--select-placement</code> <code>inline</code>, <code>own_line</code></td><td>whether the first select item rides the SELECT line</td></tr><tr><td><code>--select-indent</code></td><td>columns the select list indents under --select-placement own_line (default: 2)</td></tr><tr><td><code>--body-blank-lines</code></td><td>blank lines between the elements of a $$ body (default: 1)</td></tr><tr><td><code>--clause-keyword-align</code> <code>left</code>, <code>river</code></td><td>root clause keywords flush left, or right-aligned to a river</td></tr><tr><td><code>--river-gutter</code></td><td>column a river right-aligns clause keywords to (default: 6)</td></tr><tr><td><code>--keyword-case</code> <code>upper</code>, <code>lower</code></td><td>case for keywords, function names and types (default: upper)</td></tr><tr><td><code>--neq-style</code> <code>!=</code>, <code><></code></td><td>spelling for the not-equal operator (default: !=)</td></tr><tr><td><code>--table-alias-style</code> <code>bare</code>, <code>as</code></td><td>print a table alias as <code>t a</code> (bare) or <code>t AS a</code></td></tr><tr><td><code>--decimal-style</code> <code>NUMERIC</code>, <code>DECIMAL</code></td><td>spelling for the NUMERIC/DECIMAL type (default: NUMERIC)</td></tr></tbody></table><pre><code>sqlalign [OPTIONS] FILE_OR_DIRECTORY...
 </code></pre>
 <p>Every flag below is the complete set — this page is written against
 <code>sqlalign --help</code> and nothing is omitted. New to the tool? Start with
@@ -217,9 +217,14 @@ committing these settings to a config file rather than typing them, see
 </tr>
 </tbody>
 </table>
-<p>There is no stdin mode and <code>-</code> is not special, but <code>/dev/stdin</code> works as a path
-— with the caveat that config discovery then walks up from <code>/dev</code>, not your
-repo, so pair it with <code>--config</code>.</p>
+<p>A single <code>-</code> reads stdin and writes the result to stdout, which is what an
+editor's format-on-save runs through a generic external-formatter setting:</p>
+<pre><code class="language-sh">cat query.sql | sqlalign -
+sqlalign - --dialect tsql &lt; query.sql
+</code></pre>
+<p><code>--check</code> and <code>--diff</code> still report rather than write when the input is <code>-</code>,
+so <code>sqlalign --check -</code> is a gate on piped SQL. <code>-</code> cannot be combined with
+file arguments: stdin is read once, so that has no sensible reading.</p>
 <h2 id="output-mode">Output mode<a class="anchor" href="#output-mode" aria-label="Link to this section">#</a></h2>
 <p>By default sqlalign <strong>rewrites each file in place</strong> and prints nothing. These
 flags change that.</p>
@@ -393,7 +398,7 @@ file itself is read.</p>
 </tr>
 <tr>
 <td><code>--align-targets a,b,…</code></td>
-<td>all six</td>
+<td>all but <code>table_names</code></td>
 <td>Comma-separated alignment columns to keep. Anything left out collapses to a single space. See the table below.</td>
 </tr>
 <tr>
@@ -503,12 +508,24 @@ sqlalign indents a CTE body 2.</p>
 <td><code>column_constraints</code></td>
 <td><code>NOT NULL</code>/<code>DEFAULT</code>, and Redshift <code>ENCODE</code></td>
 </tr>
+<tr>
+<td><code>column_aliases</code></td>
+<td>the alias column alone, inside a select list</td>
+</tr>
+<tr>
+<td><code>table_aliases</code></td>
+<td>the alias column alone, across a <code>FROM</code>/<code>JOIN</code> block</td>
+</tr>
+<tr>
+<td><code>table_names</code></td>
+<td>table names padded to a shared column — opt-in, not in the default set</td>
+</tr>
 </tbody>
 </table>
 <p>An unknown name is an error, not a silent no-op:</p>
-<pre><code>sqlalign: unknown align_targets ['alias']; valid: ['aliases', 'case_results', 'column_constraints', 'column_types', 'join_conditions', 'operators']
+<pre><code>sqlalign: unknown align_targets ['alias']; valid: ['aliases', 'case_results', 'column_aliases', 'column_constraints', 'column_types', 'join_conditions', 'operators', 'table_aliases', 'table_names']
 </code></pre>
-<p><code>--no-align</code> is the shorthand for switching all six off.</p>
+<p><code>--no-align</code> is the shorthand for switching every target off.</p>
 <h2 id="exit-codes">Exit codes<a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
 <table>
 <thead>
@@ -524,11 +541,15 @@ sqlalign indents a CTE body 2.</p>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td><code>--check</code> or <code>--diff</code> found at least one file that would change. No other mode returns <code>1</code>.</td>
+<td>Something a gate should fail on: <code>--check</code> or <code>--diff</code> found a file that would change, <code>--max-declines</code> was exceeded, or <code>--lint</code> reported findings.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
 <td>Unreadable file, invalid config file, invalid argument, or an unexpected engine error on one file.</td>
+</tr>
+<tr>
+<td><code>141</code></td>
+<td>The reader closed the pipe (<code>sqlalign - | head</code>). The shell's spelling of death-by-SIGPIPE; not an error.</td>
 </tr>
 </tbody>
 </table>

@@ -155,6 +155,32 @@ class Style:
 
 
 HOUSE = Style()
+
+# One line per setting, in the order a starter config presents them. Lives in the
+# package rather than in the docs tooling because two things read it: the config
+# `--init` writes, and the settings reference on the site. A second copy would
+# drift, and the drift would be invisible -- a config comment nobody rereads.
+SETTING_SUMMARIES: dict[str, str] = {
+    "keyword_case": "Whether SQL keywords are upper- or lowercase.",
+    "align": "The master switch for columnar alignment.",
+    "align_targets": "Which columns are aligned, when `align` is on.",
+    "comma_position": "Whether a list's commas lead or trail their line.",
+    "boolean_operator_position": "Whether `AND` / `OR` lead or trail their line.",
+    "on_placement": "Whether a join's `ON` rides the join line or takes its own.",
+    "select_placement": "Whether the first select item rides the `SELECT` line.",
+    "select_indent": "How far the select list is indented under `SELECT`.",
+    "clause_keyword_align": "Whether root clause keywords are left-aligned or form a river.",
+    "river_gutter": "How wide the river's gutter is.",
+    "table_alias_style": "Whether a table alias is written bare or with `AS`.",
+    "neq_style": "How the not-equal operator is spelled.",
+    "decimal_style": "How the fixed-point type is spelled.",
+    "width": "The column the formatter tries to stay inside.",
+    "blank_lines_between_statements": "How many blank lines separate two statements.",
+    "body_blank_lines": "How many blank lines separate statements inside a `$$` body.",
+    "format_dollar_bodies": "Whether `$$ … $$` procedure bodies are formatted at all.",
+    "protect_templating": "Whether Jinja / dbt templating is masked before parsing.",
+}
+
 COMPACT = Style(align=False)
 
 # Named starting points, so a team picks one word instead of reading nine knobs.

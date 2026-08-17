@@ -14,7 +14,7 @@ from __future__ import annotations
 import dataclasses
 
 from sqlalign.config import Width
-from sqlalign.style import ALL_ALIGN_TARGETS, HOUSE, Style
+from sqlalign.style import ALL_ALIGN_TARGETS, HOUSE, SETTING_SUMMARIES, Style
 
 JOIN = ("select cust.id, cust.email, ord.total from customers cust "
         "inner join orders ord on ord.customer_id = cust.id "
@@ -49,7 +49,7 @@ class Setting:
 SETTINGS: tuple[Setting, ...] = (
     Setting(
         name="keyword_case",
-        summary="Whether SQL keywords are upper- or lowercase.",
+        summary=SETTING_SUMMARIES["keyword_case"],
         detail="Applies to keywords and function names, never to identifiers or "
                "string literals — a quoted identifier keeps the spelling you gave "
                "it, because in most dialects that spelling is load-bearing.",
@@ -58,7 +58,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="align",
-        summary="The master switch for columnar alignment.",
+        summary=SETTING_SUMMARIES["align"],
         detail="With it off, every alignment column collapses to a single space "
                "and you get the same line structure without the padding — which "
                "is what nine of ten published style guides ask for. Nothing else "
@@ -70,7 +70,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="align_targets",
-        summary="Which columns are aligned, when `align` is on.",
+        summary=SETTING_SUMMARIES["align_targets"],
         detail="A set of names. `aliases` is shorthand for `column_aliases` plus "
                "`table_aliases`. Anything not listed simply takes one space, so "
                "you can keep the join-condition column and drop the rest.",
@@ -81,7 +81,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="comma_position",
-        summary="Whether a list's commas lead or trail their line.",
+        summary=SETTING_SUMMARIES["comma_position"],
         detail="Leading commas put the separator where the eye already is when "
                "scanning a column of items, and make adding or removing the last "
                "item a one-line diff.",
@@ -90,7 +90,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="boolean_operator_position",
-        summary="Whether `AND` / `OR` lead or trail their line.",
+        summary=SETTING_SUMMARIES["boolean_operator_position"],
         detail="The same choice as `comma_position`, for predicates. Leading "
                "operators right-align under the clause keyword, so `WHERE`, `AND` "
                "and `OR` all end in the same column.",
@@ -99,7 +99,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="on_placement",
-        summary="Whether a join's `ON` rides the join line or takes its own.",
+        summary=SETTING_SUMMARIES["on_placement"],
         detail="Inline keeps a join to one row and lets the `ON` column align "
                "across the whole FROM block. On its own line it drops below, "
                "indented, which reads better when conditions are long.",
@@ -108,7 +108,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="select_placement",
-        summary="Whether the first select item rides the `SELECT` line.",
+        summary=SETTING_SUMMARIES["select_placement"],
         detail="Inline starts the list on the `SELECT` row itself. `own_line` "
                "puts every item below, indented by `select_indent` — the dbt and "
                "GitLab convention.",
@@ -117,7 +117,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="select_indent",
-        summary="How far the select list is indented under `SELECT`.",
+        summary=SETTING_SUMMARIES["select_indent"],
         detail="Only applies when `select_placement` is `own_line`; it is greyed "
                "out in the GUI otherwise, and ignored here.",
         values=(2, 4),
@@ -128,7 +128,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="clause_keyword_align",
-        summary="Whether root clause keywords are left-aligned or form a river.",
+        summary=SETTING_SUMMARIES["clause_keyword_align"],
         detail="A river right-aligns every root keyword so its last character "
                "lands on a shared gutter, which puts every clause body in one "
                "column. It is the arrangement Holywell's style guide describes.",
@@ -137,7 +137,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="river_gutter",
-        summary="How wide the river's gutter is.",
+        summary=SETTING_SUMMARIES["river_gutter"],
         detail="The column every root keyword ends on. Fixed rather than derived "
                "from the widest keyword present, so a clause added later cannot "
                "shift the whole statement sideways.",
@@ -149,7 +149,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="table_alias_style",
-        summary="Whether a table alias is written bare or with `AS`.",
+        summary=SETTING_SUMMARIES["table_alias_style"],
         detail="`FROM orders ord` and `FROM orders AS ord` parse identically, so "
                "which one comes out is sqlalign's decision rather than yours — "
                "which is exactly why it is a setting.",
@@ -158,7 +158,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="neq_style",
-        summary="How the not-equal operator is spelled.",
+        summary=SETTING_SUMMARIES["neq_style"],
         detail="`<>` and `!=` parse to the same node, so the distinction is lost "
                "before layout ever runs and one of them has to be chosen. Set it "
                "to whatever your linter expects.",
@@ -167,7 +167,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="decimal_style",
-        summary="How the fixed-point type is spelled.",
+        summary=SETTING_SUMMARIES["decimal_style"],
         detail="`DECIMAL` and `NUMERIC` are synonyms that parse to one node — the "
                "same forced choice as `neq_style`.",
         values=("NUMERIC", "DECIMAL"),
@@ -175,7 +175,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="width",
-        summary="The column the formatter tries to stay inside.",
+        summary=SETTING_SUMMARIES["width"],
         detail="A trigger for the breaks that are modelled, not a hard ceiling: "
                "an expression with no modelled break stays on one line however "
                "long it is. `0` turns the limit off entirely.",
@@ -187,7 +187,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="blank_lines_between_statements",
-        summary="How many blank lines separate two statements.",
+        summary=SETTING_SUMMARIES["blank_lines_between_statements"],
         detail="Unset, the house rule applies: exactly one blank line between two "
                "statements when both are multi-line, and otherwise whatever "
                "adjacency the input had. A number overrides that for every pair.",
@@ -197,7 +197,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="body_blank_lines",
-        summary="How many blank lines separate statements inside a `$$` body.",
+        summary=SETTING_SUMMARIES["body_blank_lines"],
         detail="A procedure body has its own vertical rhythm, separate from the "
                "one between top-level statements.",
         values=(1, 0),
@@ -206,7 +206,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="format_dollar_bodies",
-        summary="Whether `$$ … $$` procedure bodies are formatted at all.",
+        summary=SETTING_SUMMARIES["format_dollar_bodies"],
         detail="With it off the whole `CREATE FUNCTION` is left byte-identical. "
                "Useful for staging a migration: format the repository, leave the "
                "procedures for a later pass.",
@@ -216,7 +216,7 @@ SETTINGS: tuple[Setting, ...] = (
     ),
     Setting(
         name="protect_templating",
-        summary="Whether Jinja / dbt templating is masked before parsing.",
+        summary=SETTING_SUMMARIES["protect_templating"],
         detail="`{{ ref('x') }}` is not SQL and sqlglot cannot parse it. With this "
                "on, each template expression is replaced by a placeholder for the "
                "duration of the parse and restored afterwards, so a dbt model "

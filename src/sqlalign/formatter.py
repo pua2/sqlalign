@@ -3,6 +3,7 @@ from collections import namedtuple
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import TokenError
 
 from sqlalign import keywordcase, plpgsql, templating
 from sqlalign.align import apply_align_targets, render
@@ -36,6 +37,15 @@ _TRAILING_COMMENT_RE = re.compile(r";\s*(?:--[^\n]*|/\*.*?\*/)\s*\Z", re.DOTALL)
 
 class SafetyError(RuntimeError):
     pass
+
+
+class CommentLoss(SafetyError):
+    """The output does not carry the same comments as the input.
+
+    A subclass so it shares the upstream-round-trip branch with the AST check
+    while still being reported as its own cause: losing a comment and changing
+    an expression are both renderer bugs, but they are not the same bug.
+    """
 
 
 # Types whose distinction sqlglot destroys at parse time for T-SQL, where the two
@@ -263,6 +273,39 @@ def _dollar_create_parts(text: str, dialect: str):
     except (sqlglot.errors.ParseError, sqlglot.errors.TokenError):
         return None
     return parts if plpgsql.is_dollar_create(node, dialect) else None
+
+
+def comment_text(sql: str, dialect: str) -> list[str]:
+    """Every comment in `sql`, in order, stripped of surrounding whitespace.
+
+    sqlglot hangs a comment off the token it precedes rather than putting it in
+    the tree, which is why the AST check cannot see one:
+    `ast_equal("SELECT a -- note", "SELECT a", ...)` is True.
+    """
+    tokenizer = sqlglot.Dialect.get_or_raise(dialect).tokenizer_class()
+    return [c.strip() for token in tokenizer.tokenize(sql)
+            for c in (token.comments or [])]
+
+
+def comments_equal(a: str, b: str, dialect: str) -> bool:
+    """Whether `b` carries the same comments as `a`, in the same order.
+
+    Text is compared, not position. The layout deliberately MOVES a comment to
+    the end of the row above -- where it sits is expected to change, what it
+    says is not.
+
+    A `$$` body is a single string literal to the tokenizer, so comments inside
+    one are invisible here. Those statements are covered structurally by
+    `_plpgsql_ast_equal`, which compares each embedded statement in turn.
+    """
+    try:
+        return comment_text(a, dialect) == comment_text(b, dialect)
+    except TokenError:
+        # Unreachable through `format_sql`: input the tokenizer rejects fails to
+        # parse first and is declined before this runs. Kept so a direct caller
+        # gets a refusal rather than an exception -- if the comments cannot be
+        # compared, the honest answer is that they were not verified.
+        return False
 
 
 def ast_equal(a: str, b: str, dialect: str) -> bool:
@@ -494,9 +537,17 @@ def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE) -> Fo
         try:
             masked, replacements = templating.mask(text)
         except ValueError as e:
-            return FormatResult(text, [f"templating not maskable, passed through: {e}"])
+            # Counted as one declined statement: the whole file is one opaque
+            # unit here, and a passthrough --report cannot see is invisible in
+            # exactly the way --report exists to prevent.
+            return FormatResult(text, [f"templating not maskable, passed through: {e}"],
+                                1, (Decline("unsupported", "templating not maskable"),))
         result = _format_all(masked, dialect, style)
-        return FormatResult(templating.unmask(result.text, replacements), result.warnings)
+        # Rebuilt for the unmasked text only; the counts ride through unchanged.
+        # Dropping them blinded --report and --max-declines for every templated
+        # file, which is most of a dbt project.
+        return FormatResult(templating.unmask(result.text, replacements),
+                            result.warnings, result.statements, result.declines)
 
 
 def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
@@ -570,6 +621,11 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                         style.keyword_case)
                 if not ast_equal(stmt, formatted, dialect):
                     raise SafetyError(f"formatting changed semantics near: {snippet}")
+                # Comments are not in the AST, so the check above passes whether
+                # or not they survived. Without this one, dropping a comment is
+                # invisible to every safety check in the engine.
+                if not comments_equal(stmt, formatted, dialect):
+                    raise CommentLoss(f"formatting changed a comment near: {snippet}")
             except Unsupported as exc:
                 # The reason rides in the message so `--report` can name the
                 # construct, not just count the declines.
@@ -578,7 +634,7 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                 declines.append(Decline("unsupported", str(exc)))
                 emit(stmt, True)
                 continue
-            except SafetyError:
+            except SafetyError as safety:
                 # If sqlglot cannot round-trip the input through its own
                 # generator, no formatter could satisfy the check and the fault
                 # is upstream: report it as such rather than as a semantic
@@ -590,9 +646,14 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                     declines.append(Decline("upstream", "sqlglot round-trip is unstable"))
                     emit(stmt, True)
                     continue
-                warnings.append(
-                    f"formatting would change semantics, passed through unformatted: {snippet}")
-                declines.append(Decline("safety", "output would differ semantically"))
+                if isinstance(safety, CommentLoss):
+                    warnings.append("formatting would change a comment, passed through "
+                                    f"unformatted: {snippet}")
+                    declines.append(Decline("safety", "output would change a comment"))
+                else:
+                    warnings.append("formatting would change semantics, passed through "
+                                    f"unformatted: {snippet}")
+                    declines.append(Decline("safety", "output would differ semantically"))
                 emit(stmt, True)
                 continue
             except Exception as exc:  # a real bug: surface it, but keep formatting the file

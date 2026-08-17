@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -195,9 +195,12 @@ and AST-compared against your input; if the output would mean anything different
 through <strong>byte-identical</strong> with a warning instead. It does not lint, and it will
 not rewrite your SQL for you.</p>
 <h2 id="install">Install<a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
-<p>sqlalign needs <strong>Python 3.12 or newer</strong> and has exactly one runtime dependency:
-<code>sqlglot</code>, pinned to the <code>30.14.x</code> line. (The layout engine reads exact AST
-shapes, so the pin is deliberate — see the comment in <code>pyproject.toml</code>.)</p>
+<p>sqlalign needs <strong>Python 3.10 or newer</strong>. Its one runtime dependency is
+<code>sqlglot</code>, accepted as <code>&gt;=30.14,&lt;31</code>. The layout engine reads exact AST shapes,
+so the range is not a passive float: <code>tests/test_sqlglot_conformance.py</code> asserts
+each of those shapes by name, and CI runs the whole suite against the newest
+release the range allows as well as the locked one. On 3.10 it also installs
+<code>tomli</code>, which is <code>tomllib</code> from the standard library of every later version.</p>
 <pre><code class="language-sh">pip install sqlalign
 </code></pre>
 <p>That installs a <code>sqlalign</code> command on your PATH. Check it:</p>
@@ -516,10 +519,13 @@ sqlalign --gui --dialect tsql
 </code></pre>
 <p>Left: dialect, preset, and every setting. Right: an editable input pane over the
 formatted result, with a status line counting statements and naming anything that
-declined. A setting that currently does nothing is greyed out rather than left
-sitting there inert — <code>…indent</code> only applies when the SELECT list is on its own
-line, <code>…river gutter</code> only when clause keywords are set to <code>river</code> — and the
-preset box drops to <code>(custom)</code> the moment your settings stop matching it.</p>
+declined. A setting that currently does nothing is greyed out, with a line saying
+which control it is waiting on rather than leaving it looking broken.</p>
+<p><strong>Save settings</strong> writes a <code>.sqlalign.toml</code> with the values written out live,
+because they are choices you just made — the opposite of what <code>--init</code> writes,
+and for the opposite reason. The file records which preset it matches, if any,
+and the dialect you previewed with as a comment, since <code>dialect</code> has no config
+key. <strong>Open</strong> loads a real <code>.sql</code> file in place of the bundled samples.</p>
 <p><strong>Open SQL…</strong> (<code>⌘O</code>) loads a file, and the window is named for it from then on.
 <strong>Save formatted…</strong> (<code>⌘S</code>) defaults to that same file, so formatting one in place
 is the one-click path and matches what <code>sqlalign &lt;file&gt;</code> writes byte for byte;
@@ -532,25 +538,91 @@ one.</p>
 and Ubuntu that means <code>apt install python3-tk</code>; the flag says so if it is missing
 rather than failing with a traceback.</p>
 <h2 id="editors">Editors<a class="anchor" href="#editors" aria-label="Link to this section">#</a></h2>
-<p>sqlalign has no editor plugin. Two recipes cover most setups.</p>
+<p>sqlalign has no editor plugin and does not need one: it reads stdin, writes
+stdout, and starts in about a tenth of a second, which is what every editor's
+&quot;external formatter&quot; setting expects.</p>
+<p><strong>Filter the buffer</strong> (vim, Neovim, Helix, and anything with a <code>!</code> filter):</p>
+<pre><code class="language-vim">:%!sqlalign -
+</code></pre>
+<p><code>-</code> resolves <code>.sqlalign.toml</code> from the working directory, so a committed config
+is picked up. <code>/dev/stdin</code> also works as a path, but config discovery walks up
+from the <em>path you named</em> and <code>/dev/stdin</code> is not in your repository — so that
+route needs an explicit <code>--config</code> and <code>-</code> does not.</p>
 <p><strong>Format on save.</strong> Point any &quot;run a command on save&quot; extension at the file and
 let the editor reload it:</p>
 <pre><code class="language-sh">sqlalign &quot;$FILE&quot;
 </code></pre>
-<p><strong>Filter the buffer</strong> (vim, and anything with a <code>!</code> filter). sqlalign has no
-stdin mode, but it will read <code>/dev/stdin</code>:</p>
-<pre><code class="language-vim">:%!sqlalign --stdout /dev/stdin
+<p><strong>VS Code.</strong> sqlalign reads stdin, so it can be registered as a real formatter
+rather than as a command bolted onto save — which is what makes <code>Format Document</code>, format-on-save and format-selection all work through the same path.
+With the <a href="https://marketplace.visualstudio.com/items?itemName=jkillian.custom-local-formatters">Custom Local Formatters</a>
+extension:</p>
+<pre><code class="language-json">{
+  &quot;customLocalFormatters.formatters&quot;: [
+    { &quot;command&quot;: &quot;sqlalign -&quot;, &quot;languages&quot;: [&quot;sql&quot;] }
+  ],
+  &quot;[sql]&quot;: { &quot;editor.formatOnSave&quot;: true }
+}
 </code></pre>
-<p>That works, with one caveat: config discovery walks up from the <em>path you named</em>,
-and <code>/dev/stdin</code> is not in your repo, so a committed <code>.sqlalign.toml</code> is <strong>not</strong>
-picked up. Pass <code>--config</code> explicitly if you filter this way:</p>
-<pre><code class="language-vim">:%!sqlalign --stdout --config /path/to/.sqlalign.toml /dev/stdin
-</code></pre>
-<p>Formatting the real file (<code>:!sqlalign %</code> then <code>:e!</code>) has no such problem, and is
-the simpler choice inside a repo.</p>
+<p>Any &quot;run a command on save&quot; extension works too, pointed at <code>$FILE</code> as above —
+but it formats the file behind the editor's back and makes you reload, where the
+formatter route does not.</p>
+<p><strong>JetBrains (DataGrip, PyCharm, IntelliJ).</strong> Use the bundled <strong>File Watchers</strong>
+plugin rather than looking for a marketplace listing — Settings → Tools → File
+Watchers → <code>+</code> → <code>&lt;custom&gt;</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File type</td>
+<td>SQL</td>
+</tr>
+<tr>
+<td>Program</td>
+<td><code>sqlalign</code></td>
+</tr>
+<tr>
+<td>Arguments</td>
+<td><code>$FilePath$</code></td>
+</tr>
+<tr>
+<td>Output paths to refresh</td>
+<td><code>$FilePath$</code></td>
+</tr>
+<tr>
+<td>Advanced → Auto-save edited files</td>
+<td>off</td>
+</tr>
+</tbody>
+</table>
+<p>Turning auto-save off is what stops the watcher firing on every keystroke.</p>
 <h2 id="git-pre-commit-hook">Git pre-commit hook<a class="anchor" href="#git-pre-commit-hook" aria-label="Link to this section">#</a></h2>
-<p>Format staged SQL and re-stage what changed, so what you commit is always
-formatted:</p>
+<p>The repository ships hooks for <a href="https://pre-commit.com">pre-commit</a>, which is
+the no-maintenance route:</p>
+<pre><code class="language-yaml"># .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pua2/sqlalign
+    rev: v1.1.0
+    hooks:
+      - id: sqlalign          # rewrites and restages
+      # - id: sqlalign-check  # or: only report, change nothing
+</code></pre>
+<p><code>sqlalign</code> rewrites and fails so you restage — the pre-commit convention for a
+formatter. <code>sqlalign-check</code> only reports, which is what a repository you do not
+own wants.</p>
+<p>For CI there is a published action, which defaults to <code>--check</code> because an
+action that silently reformats a checkout is not what a gate is for:</p>
+<pre><code class="language-yaml">- uses: pua2/sqlalign@v1.1.0
+  # with:
+  #   args: --diff          # show the change, not just the file names
+  #   paths: models/
+</code></pre>
+<p>Without the framework, a hand-rolled hook that formats staged SQL and re-stages
+what changed:</p>
 <pre><code class="language-sh">#!/bin/sh
 # .githooks/pre-commit
 files=$(git diff --cached --name-only --diff-filter=ACM -- '*.sql')
@@ -578,6 +650,46 @@ which is exactly what a CI runner treats as a failure:</p>
 rather than only which files are:</p>
 <pre><code class="language-sh">sqlalign --diff .
 </code></pre>
+<h2 id="starting-a-config">Starting a config<a class="anchor" href="#starting-a-config" aria-label="Link to this section">#</a></h2>
+<p><code>sqlalign --init</code> writes a <code>.sqlalign.toml</code> next to you:</p>
+<pre><code class="language-sh">sqlalign --init                     # house defaults
+sqlalign --init --preset compact    # start from a published style guide
+</code></pre>
+<p>Every setting is written <strong>commented out</strong>, showing the value currently in
+effect, so the file changes nothing until you uncomment something. That is
+deliberate: a starter that arrived pinning all eighteen settings would freeze
+you on whatever the defaults were the day you ran it and call that a decision.</p>
+<p><code>--preset</code> is the exception and is written live, because choosing one is the
+decision you just made. The commented values below it then show what that preset
+does, which makes the file worth reading as well as editing.</p>
+<p>It refuses to overwrite an existing config.</p>
+<h2 id="calling-it-from-python">Calling it from Python<a class="anchor" href="#calling-it-from-python" aria-label="Link to this section">#</a></h2>
+<p>The CLI is the supported surface for a repository. For a notebook, a dbt hook or
+a code generator, there are two functions:</p>
+<pre><code class="language-python">import sqlalign
+
+sqlalign.format(&quot;select a,b from t;&quot;)
+# 'SELECT a\n     , b\nFROM t;'
+
+result = sqlalign.format_result(sql, dialect=&quot;redshift&quot;)
+result.text          # the formatted SQL
+result.statements    # how many statements were seen
+result.declines      # what was passed through, and why
+</code></pre>
+<p><code>format</code> returns the text. <code>format_result</code> also tells you what happened, which
+matters more than it sounds: a statement sqlalign cannot model comes back
+<strong>byte-identical rather than raising</strong>, so <code>format</code> alone cannot distinguish
+&quot;formatted&quot; from &quot;left alone&quot; — both are valid SQL. Anything that gates on the
+result should read <code>declines</code>.</p>
+<p><code>style</code> takes a <code>Style</code>, so a preset carries across:</p>
+<pre><code class="language-python">from sqlalign.style import preset_style
+
+sqlalign.format(sql, style=preset_style(&quot;compact&quot;))
+</code></pre>
+<p>An unsupported <code>dialect</code> raises <code>ValueError</code> rather than being formatted with
+keywords the target engine may not accept.</p>
+<p>These two names are the API. Everything else under <code>sqlalign.*</code> is internal and
+moves between releases.</p>
 <p>Because sqlalign does not lint, it slots in beside a linter rather than replacing
 one — running <code>sqlfluff lint</code> in a neighbouring step is the intended setup.</p>
 <h2 id="exit-codes">Exit codes<a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
@@ -595,7 +707,7 @@ one — running <code>sqlfluff lint</code> in a neighbouring step is the intende
 </tr>
 <tr>
 <td><code>1</code></td>
-<td><code>--check</code> or <code>--diff</code> found at least one file that would change. Only these two modes ever return <code>1</code>.</td>
+<td><code>--check</code> or <code>--diff</code> found at least one file that would change. <code>--max-declines</code> and <code>--lint</code> return <code>1</code> on their own findings too — <code>1</code> always means a gate found something, never a malfunction.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -617,7 +729,7 @@ which ones conflict.</li>
 <li><strong>Committing a team style:</strong> <a href="configuration.html"><code>configuration.md</code></a> — config
 file discovery, presets, and precedence.</li>
 <li><strong>What the output looks like, construct by construct:</strong> <a href="style.html"><code>style.md</code></a>.</li>
-<li><strong>The style itself, in the repo:</strong> <code>samples/queries.sql</code> is 25 hand-formatted
+<li><strong>The style itself, in the repo:</strong> <code>samples/queries.sql</code> is 29 hand-formatted
 goldens that the test suite asserts byte-for-byte. It is the executable spec.</li>
 <li><strong>Positioning, presets and the honest comparison against other formatters:</strong>
 the <a href="https://github.com/pua2/sqlalign/blob/main/README.md">README</a>.</li>
@@ -625,7 +737,7 @@ the <a href="https://github.com/pua2/sqlalign/blob/main/README.md">README</a>.</
 the <a href="architecture.html">Architecture</a> page.</li>
 </ul>
 </main>
-  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#install">Install</a><a class="lvl2" href="#your-first-format">Your first format</a><a class="lvl2" href="#look-before-you-write">Look before you write</a><a class="lvl2" href="#formatting-a-directory">Formatting a directory</a><a class="lvl3" href="#excluding-files">Excluding files</a><a class="lvl2" href="#skipping-one-statement">Skipping one statement</a><a class="lvl2" href="#when-sqlalign-declines">When sqlalign declines</a><a class="lvl2" href="#linting-inside-bodies">Linting inside $$ bodies</a><a class="lvl2" href="#running-sqlfluff-alongside-it">Running sqlfluff alongside it</a><a class="lvl3" href="#one-command-instead-of-two">One command instead of two</a><a class="lvl2" href="#the-settings-panel">The settings panel</a><a class="lvl2" href="#editors">Editors</a><a class="lvl2" href="#git-pre-commit-hook">Git pre-commit hook</a><a class="lvl2" href="#ci">CI</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#where-to-go-next">Where to go next</a></aside>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#install">Install</a><a class="lvl2" href="#your-first-format">Your first format</a><a class="lvl2" href="#look-before-you-write">Look before you write</a><a class="lvl2" href="#formatting-a-directory">Formatting a directory</a><a class="lvl3" href="#excluding-files">Excluding files</a><a class="lvl2" href="#skipping-one-statement">Skipping one statement</a><a class="lvl2" href="#when-sqlalign-declines">When sqlalign declines</a><a class="lvl2" href="#linting-inside-bodies">Linting inside $$ bodies</a><a class="lvl2" href="#running-sqlfluff-alongside-it">Running sqlfluff alongside it</a><a class="lvl3" href="#one-command-instead-of-two">One command instead of two</a><a class="lvl2" href="#the-settings-panel">The settings panel</a><a class="lvl2" href="#editors">Editors</a><a class="lvl2" href="#git-pre-commit-hook">Git pre-commit hook</a><a class="lvl2" href="#ci">CI</a><a class="lvl2" href="#starting-a-config">Starting a config</a><a class="lvl2" href="#calling-it-from-python">Calling it from Python</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#where-to-go-next">Where to go next</a></aside>
 </div>
 <script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
 // search over the generated index. No dependencies -- the site is static files

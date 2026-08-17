@@ -30,7 +30,11 @@ import pytest
 
 from sqlalign.formatter import format_sql
 
+# Both renderer-bug declines. "would change a comment" joined it when comment
+# preservation moved into the safety net -- losing a comment is as much a bug in
+# the layout as changing an expression, and neither may happen on real SQL.
 SILENT = "would change semantics"
+RENDERER_BUGS = (SILENT, "would change a comment")
 
 # Identifier spellings, which is where both known instances of this bug lived:
 # quoting, case, reserved words, and characters that only survive quoted.
@@ -84,6 +88,13 @@ PREDICATES = [
     "x IN (1, 2)", "x NOT IN (1, 2)",
     "x BETWEEN 1 AND 2", "x NOT BETWEEN 1 AND 2",
     "x IS NULL", "x IS NOT NULL",
+    # The whole IS family, because the first fix for `NOT x IS NULL` shipped two
+    # regressions the sweep missed: booleans collapse to one tree even in
+    # Postgres, and Not(Is(negate)) rendered as its logical inverse.
+    "NOT x IS NULL", "NOT x IS NOT NULL",
+    "x IS TRUE", "x IS NOT TRUE", "NOT x IS TRUE",
+    "x IS FALSE", "x IS NOT FALSE",
+    "x IS UNKNOWN", "x IS NOT UNKNOWN",
     "x IS DISTINCT FROM y", "x IS NOT DISTINCT FROM y",
     "x IN (SELECT y FROM u)", "x NOT IN (SELECT y FROM u)",
     "EXISTS (SELECT 1 FROM u)", "NOT EXISTS (SELECT 1 FROM u)",
@@ -101,7 +112,7 @@ PREDICATE_SHAPES = [
 
 def _silent(sql, dialect="postgres"):
     result = format_sql(sql, dialect)
-    return [w for w in result.warnings if SILENT in w]
+    return [w for w in result.warnings if any(b in w for b in RENDERER_BUGS)]
 
 
 @pytest.mark.parametrize("shape", SHAPES)

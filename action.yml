@@ -1,0 +1,62 @@
+name: sqlalign
+description: Format SQL into the columnar house style, or check that it already is.
+author: Pavan Amin
+
+branding:
+  icon: align-left
+  color: blue
+
+inputs:
+  args:
+    description: >-
+      Flags passed to sqlalign. Defaults to --check, which writes nothing and
+      exits 1 if any file would change; that is what a gate wants. Use --diff
+      to have the log show what is wrong rather than only which files are.
+    required: false
+    default: "--check"
+  paths:
+    description: Files or directories to format. Defaults to the whole checkout.
+    required: false
+    default: "."
+  version:
+    description: >-
+      Version to install, e.g. 1.1.0. Defaults to the latest release. Pin it if
+      you want a style change to arrive when you choose rather than when it
+      ships.
+    required: false
+    default: ""
+  python-version:
+    description: Python used to run sqlalign. Needs to be 3.10 or newer.
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    # The inputs reach the shell as environment variables rather than being
+    # interpolated into the script, so a value containing shell metacharacters
+    # is data instead of code.
+    - name: Install sqlalign
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        if [ -n "$VERSION" ]; then
+          python -m pip install --disable-pip-version-check "sqlalign==$VERSION"
+        else
+          python -m pip install --disable-pip-version-check sqlalign
+        fi
+        sqlalign --version
+
+    - name: Run sqlalign
+      shell: bash
+      env:
+        ARGS: ${{ inputs.args }}
+        PATHS: ${{ inputs.paths }}
+      # Unquoted on purpose: `args` is a flag list and has to word-split. It
+      # comes from the workflow author, who already controls the whole file.
+      run: sqlalign $ARGS $PATHS

@@ -229,11 +229,79 @@ def preview(sql: str, values: dict, dialect: str) -> tuple[str, str]:
     return result.text, status
 
 
-def as_toml(values: dict) -> str:
-    """The panel's settings as a `.sqlalign.toml` — the same text
-    `--show-config` prints, so what the GUI saves is what the CLI reads."""
+def _exactly_a_preset(values: dict) -> str | None:
+    """The preset `values` exactly is, or None.
+
+    Stricter than `preset_named`, deliberately. That compares the formatted
+    output of one sample, which is the right question for the panel's dropdown:
+    two settings that format identically are the same choice to a reader.
+
+    It is the wrong question for a claim written into a file. `width` does not
+    change that sample, so a project that set width to 71 would still be told it
+    had the preset's values -- which is a sentence in their repository that is
+    not true.
+    """
+    for name in sorted(PRESETS):
+        if settings_from(preset_style(name)) == values:
+            return name
+    return None
+
+
+def disabled_reason(name: str, values: dict) -> str | None:
+    """Why the control named `name` is inert right now, or None if it is not.
+
+    A greyed-out control with no explanation reads as a bug in the panel. The
+    setting is real and will do something -- just not until the control it
+    depends on says so, and that is a sentence the panel can say.
+
+    Kept a plain function so it can be tested without a display; the whole
+    module is otherwise only reachable through tkinter.
+    """
+    for control in CONTROLS:
+        if control["name"] != name:
+            continue
+        need = control.get("needs")
+        if need is None:
+            return None
+        depends_on, wanted = need
+        if values.get(depends_on) == wanted:
+            return None
+        spelled = str(wanted).lower() if isinstance(wanted, bool) else f"{wanted}"
+        return f"needs {depends_on} = {spelled}"
+    return None
+
+
+def as_toml(values: dict, *, dialect: str | None = None) -> str:
+    """The panel's settings as a `.sqlalign.toml`.
+
+    The values are written LIVE rather than commented out, which is the opposite
+    of what `--init` writes and for the opposite reason: these are choices
+    someone just made in the panel, not a menu they have yet to read.
+
+    The body is `describe`, the same text `--show-config` prints, so what the
+    GUI saves is what the CLI reads. The header exists because this file lands
+    in a repository where the next person to open it did not choose any of it.
+    """
     from sqlalign.configfile import describe
-    return describe(style_from(values)) + "\n"
+
+    header = [
+        "# sqlalign configuration, written from the settings panel (`sqlalign --gui`).",
+        "#",
+        "# Every setting is written out, so this pins the style as it was chosen.",
+        "# `sqlalign --init` writes the same settings commented out instead, if you",
+        "# would rather follow a preset as it changes.",
+        "#",
+        "# Reference: https://sqlalign.lumaru.app/v1/settings.html",
+    ]
+    preset = _exactly_a_preset(values)
+    if preset is not None:
+        header.insert(1, f"# These are the `{preset}` preset's values.")
+    if dialect:
+        # `dialect` is CLI-only and has no config key, so it is recorded as a
+        # comment rather than written as a setting that would fail to load.
+        header.append("#")
+        header.append(f"# Previewed with --dialect {dialect}, which has no config key.")
+    return "\n".join(header) + "\n\n" + describe(style_from(values)) + "\n"
 
 
 def run(dialect: str = "postgres") -> int:      # pragma: no cover - needs a display
@@ -476,6 +544,7 @@ def build(root, dialect: str = "postgres") -> dict:
 
     widgets: dict = {}
     boxes: dict = {}          # name -> the actual widgets, for enabling/disabling
+    notes: dict = {}          # name -> the label that says why it is greyed out
 
     def refresh_enabled():
         """Grey out every control whose `needs` is not currently satisfied."""
@@ -488,6 +557,10 @@ def build(root, dialect: str = "postgres") -> dict:
             for widget in boxes.get(control["name"], ()):
                 widget.configure(state=state if state == "normal"
                                  or control["kind"] != "choice" else "disabled")
+            # Say WHY, rather than leaving a greyed control looking broken.
+            note = notes.get(control["name"])
+            if note is not None:
+                note.configure(text=disabled_reason(control["name"], values) or "")
 
     def refresh_widgets():
         """Push `values` back into the controls, after a preset or a file load."""
@@ -535,6 +608,11 @@ def build(root, dialect: str = "postgres") -> dict:
 
     for control in CONTROLS:
         name, kind = control["name"], control["kind"]
+        if control.get("needs"):
+            # One label per dependent control, filled in by refresh_enabled. Packed
+            # before the control itself so the reason sits above what it explains.
+            notes[name] = ttk.Label(settings, text="", foreground="grey")
+            notes[name].pack(anchor="w")
         if kind == "flag":
             var = tk.BooleanVar(value=values[name])
             box = ttk.Checkbutton(settings, text=control["label"], variable=var)
@@ -651,7 +729,7 @@ def build(root, dialect: str = "postgres") -> dict:
         if not path:
             return
         try:
-            pathlib.Path(path).write_text(as_toml(values))
+            pathlib.Path(path).write_text(as_toml(values, dialect=dialect))
         except OSError as e:
             report("save there", e)
 

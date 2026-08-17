@@ -140,3 +140,41 @@ def test_the_guard_still_rejects_a_real_change():
     genuinely alters which column is meant."""
     assert not ast_equal('select a as "b" from t;', "select a as b from t;", "postgres")
     assert ast_equal('select a as "b" from t;', 'select a as "b" from t;', "postgres")
+
+
+# ---- the third site: a CTE name --------------------------------------------
+#
+# Found by the corpus suite rather than by hand. sqlglot's optimizer quotes every
+# identifier it emits, so all of its output tripped this -- as would any tool
+# that generates SQL the same way.
+
+@pytest.mark.parametrize("dialect,quoted", [("postgres", '"cte"'),
+                                            ("redshift", '"cte"'),
+                                            ("tsql", "[cte]")])
+def test_a_quoted_cte_name_keeps_its_quotes(dialect, quoted):
+    """`WITH "cte" AS` came out as bare `WITH cte AS`, which names a different
+    relation in Postgres and is a syntax error whenever the name needs quoting.
+
+    T-SQL spells the quoting `[cte]`, which is sqlglot rendering the identifier
+    in the target dialect rather than the quoting being lost.
+    """
+    result = format_sql('WITH "cte" AS (SELECT a FROM x) SELECT a FROM "cte";', dialect)
+    assert not result.warnings, result.warnings
+    assert f"{quoted} AS (" in result.text, result.text
+
+
+@pytest.mark.parametrize("name", ['"My CTE"', '"select"', '"MixedCase"', '"café"'])
+def test_cte_names_that_only_survive_quoted(name):
+    """Names that are a syntax error unquoted, so dropping the quotes could not
+    round-trip even in principle."""
+    result = format_sql(f"WITH {name} AS (SELECT a FROM x) SELECT a FROM {name};",
+                        "postgres")
+    assert not result.warnings, result.warnings
+    assert f"{name} AS (" in result.text, result.text
+
+
+def test_an_unquoted_cte_name_is_left_unquoted():
+    """The fix must not start quoting names the author wrote bare."""
+    result = format_sql("WITH cte AS (SELECT a FROM x) SELECT a FROM cte;", "postgres")
+    assert "cte AS (" in result.text
+    assert '"cte"' not in result.text

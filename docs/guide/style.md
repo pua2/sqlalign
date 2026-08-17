@@ -616,14 +616,43 @@ and Redshift docs both use the unquoted one.
 `CREATE FUNCTION`/`CREATE PROCEDURE` statement is left byte-identical, header
 included, while other statements in the same file still format.
 
+## Stability
+
+**The style does not change in a patch release.** If you pin `sqlalign~=1.1`,
+every file it formats today it formats identically tomorrow, and a patch upgrade
+cannot land a reformatting commit in your repository.
+
+That is not a promise so much as a property. `samples/queries.sql` and
+`tests/fixtures/expected/` are hand-formatted and compared **byte for byte**, and
+they run as their own CI job. A change to the layout — even one nobody intended —
+turns that job red before it can reach a release. The goldens are the
+specification; the code is what has to agree with them.
+
+When the style does change, it changes in a **minor** release, the changelog says
+which construct moved and why, and the goldens change in their own commit with
+the reason. A style change that arrives without those three things is a bug.
+
+There is deliberately no `style_version` key to pin. A version selector is worth
+having the day there are two styles to select between and not before: today it
+would be a setting with one value, a second code path with nothing in it, and a
+promise to maintain old layouts forever that this project has not made. The
+release policy above is the guarantee; the config file does not need to restate
+it.
+
 ## What the style deliberately does not do
 
 **It cannot change what your SQL means.** Every formatted statement is re-parsed
-and AST-compared against the input. Anything that would differ semantically is
-discarded and the original bytes are kept. Identifiers, string literals, cast form
-(`::` versus `CAST`), `GROUP BY` reference form and the alias names you chose all
-survive exactly as written. (The `AS` keyword itself is layout, not content, so it
-is normalized: present in select lists, absent for table aliases.)
+and compared against the input as a syntax tree, and that tree is what "means" is
+measured by. Anything that would differ is discarded and the original bytes are
+kept. Identifiers, string literals, cast form (`::` versus `CAST`), `GROUP BY`
+reference form, comments and the alias names you chose all survive exactly as
+written. (The `AS` keyword itself is layout, not content, so it is normalized:
+present in select lists, absent for table aliases.)
+
+Two spellings collapse before that comparison exists, and are therefore
+sqlalign's to pick rather than yours: `!=` against `<>`, and `decimal` against
+`numeric`. Both are settings — `neq_style` and `decimal_style` — rather than
+accidents, precisely because the guarantee cannot reach them.
 
 **It does not lint.** sqlalign will not unify your cast styles, insert missing
 aliases, turn `JOIN` into `INNER JOIN`, or make `GROUP BY` references consistent.
@@ -631,18 +660,18 @@ That is sqlfluff's job, and the two are designed to run together.
 
 **It declines what it cannot reproduce exactly.** A construct the engine does not
 model passes through byte-identical, with a warning on stderr and exit code 0.
-`JOIN … USING` is one such construct today:
+A CTE column list is one such construct today:
 
 ```sql
-select a.id from a join b using (tenant_id);
+with c(a, b) as (select 1, 2) select a from c;
 ```
 
 ```sql
-select a.id from a join b using (tenant_id);
+with c(a, b) as (select 1, 2) select a from c;
 ```
 
 ```
-sqlalign: query.sql: unsupported construct, passed through: select a.id from a join b using (tenant_
+sqlalign: query.sql: unsupported construct (CTE column list), passed through: with c(a, b) as (select 1, 2) select a f
 ```
 
 Nothing was reformatted and nothing was mangled. The rest of the file still
@@ -717,7 +746,7 @@ had been right-aligned under `ON`, falls back to a two-space indent.
 ### align_targets — keep some columns, drop others
 
 `--align-targets` takes a comma-separated list. Anything you leave out collapses
-to a single space; `--no-align` is the shorthand for leaving out all six. An
+to a single space; `--no-align` is the shorthand for leaving them all out. An
 unrecognised name is an error, not a silent no-op.
 
 | Target | Aligns |
@@ -728,6 +757,9 @@ unrecognised name is an error, not a silent no-op.
 | `case_results` | `THEN` in a short-form `CASE` |
 | `column_types` | column types in `CREATE TABLE` |
 | `column_constraints` | `NOT NULL`/`DEFAULT`, and Redshift `ENCODE` |
+| `column_aliases` | the alias column alone, inside a select list |
+| `table_aliases` | the alias column alone, across a `FROM`/`JOIN` block |
+| `table_names` | table names padded to a shared column — opt-in, not in the default set |
 
 Keeping only the alias column:
 
@@ -943,7 +975,7 @@ create table daily_revenue (
 
 ### Presets
 
-If one of the four presets is close enough, start there and override the rest.
+If one of the six presets is close enough, start there and override the rest.
 `--preset NAME` on the command line, or `preset = "name"` in a config file.
 
 | Preset | Sets |

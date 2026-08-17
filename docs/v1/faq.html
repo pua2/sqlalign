@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -191,8 +191,8 @@ dl.meta dd { margin:0; }
 <p>Because sqlalign declined it, and it told you so on stderr. A statement it cannot
 reproduce exactly is emitted <strong>byte-identical</strong> rather than approximated:</p>
 <pre><code class="language-console">$ sqlalign --stdout mixed.sql
-sqlalign: mixed.sql: unsupported construct, passed through: select distinct on (a) a, b from t;
-select distinct on (a) a, b from t;
+sqlalign: mixed.sql: unsupported construct (CTE column list), passed through: with c(a, b) as (select 1, 2) select a f
+with c(a, b) as (select 1, 2) select a from c;
 SELECT x
      , y
 FROM z
@@ -520,11 +520,19 @@ can skip it and <code>git log --follow</code> stays usable. <code>git blame</cod
 valid to sqlglot but invalid to your engine, because the round trip never
 leaves sqlglot's grammar. That is why only three audited dialects are offered —
 see <a href="dialects.html#adding-a-dialect-is-more-than-registering-a-parser">Dialects</a>.</li>
-<li><strong>Comments are excluded from the AST comparison.</strong> A comment cannot change
-meaning, so stripping it is correct for semantics — but it means a dropped or
-restyled comment would be silent as far as the safety net is concerned. The
-byte-exact golden fixtures are the guard there, which is why the comment engine
-declines any comment position it does not model rather than guessing.</li>
+<li><strong>Comments are compared separately, because they are not in the AST.</strong> sqlglot
+hangs a comment off the token it precedes rather than putting it in the tree,
+so the AST comparison passes whether or not a comment survived. That was once
+a real gap — a lost comment was invisible to the one check meant to catch a
+change in meaning, and two of the worst bugs this project had were exactly
+that: <code>SELECT a -- c,</code> lost a separator, and <code>SELECT a -- note;</code> left the
+statement unterminated so it swallowed the next one. Since 1.1 each statement
+is also compared on the comments it carries, and one that would differ is
+passed through like any other. Inside a <code>$$</code> body the tokenizer sees one
+string literal, so those statements are compared structurally instead — and
+the body renderer holds the same line by construction: a same-line trailing
+comment is reproduced verbatim, and a comment position it does not model
+declines as <code>comment inside a procedural clause</code> rather than guessing.</li>
 <li><strong>Some distinctions are destroyed before the comparison exists.</strong> Where
 sqlglot collapses two spellings into one node, both sides collapse identically.
 Where the two are true synonyms this is harmless; where they are not, a
@@ -534,33 +542,50 @@ separate raw-source guard is needed — see T-SQL <code>REAL</code>/<code>NTEXT<
 <p>Formatting is idempotent: running sqlalign on its own output is a no-op, and the
 test suite asserts that byte-for-byte for all 29 golden fixtures.</p>
 <h2 id="how-fast-is-it">How fast is it?<a class="anchor" href="#how-fast-is-it" aria-label="Link to this section">#</a></h2>
-<p>Fast enough for a pre-commit hook on a whole repo. <code>sqlalign --check</code> over corpora
-built from the golden fixtures, on an Apple M3 Pro:</p>
+<p>Fast enough for a pre-commit hook on a whole repository. Reproduce these with
+<code>uv run python tools/benchmark.py</code>, which builds a tree from the vendored corpus
+and times the CLI end to end — interpreter start, imports and all, because that
+is what you actually wait for.</p>
+<p>On an Apple M3 Pro, Python 3.12, 500 files totalling 1.4 MB:</p>
 <table>
 <thead>
 <tr>
-<th>Workload</th>
+<th></th>
 <th>Wall time</th>
+<th>Rate</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>One small file</td>
-<td>0.09 s</td>
+<td><code>sqlalign --check .</code></td>
+<td>2.8 s</td>
+<td>180 files/s</td>
 </tr>
 <tr>
-<td>480 files, ~6,500 lines total</td>
-<td>1.1 s</td>
+<td>Rewriting in place</td>
+<td>2.8 s</td>
+<td>177 files/s</td>
 </tr>
 <tr>
-<td>One file, 500 medium join statements</td>
-<td>1.7 s</td>
+<td>Startup alone</td>
+<td>0.10 s</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
-<p>About 0.09 s of every run is Python startup plus importing sqlglot, so a
+<p>Which projects to about <strong>5.5 s for a thousand files</strong> and <strong>54 s for ten
+thousand</strong>.</p>
+<p><strong>There is no <code>--jobs</code> flag, deliberately.</strong> These numbers are why: a thousand-file
+project checks in the time a test suite spends collecting, and the case that
+actually runs often — a pre-commit hook over the handful of files you changed —
+is dominated by startup rather than by formatting. Parallelism would buy a few
+seconds on the largest repositories and cost ordered output, aggregated
+<code>--report</code> counts, and a second way for the tool to fail. If your repository is
+large enough that this is wrong, that is worth an issue.</p>
+<p>About 0.10 s of every run is Python startup plus importing sqlglot, so a
 one-file-per-invocation hook pays that each time. If you are wiring up a
-pre-commit hook, pass all the changed files in one invocation rather than looping.</p>
+pre-commit hook, pass all the changed files in one invocation rather than looping
+— which is what the <a href="getting-started.html">hooks in this repository</a> do.</p>
 <p>sqlalign never connects to a database. It parses, lays out, and re-parses — that
 is all it does, and it works on files that reference tables you do not have.</p>
 <h2 id="what-is-this-warning-that-doesn-t-say-sqlalign">What is this warning that doesn't say <code>sqlalign:</code>?<a class="anchor" href="#what-is-this-warning-that-doesn-t-say-sqlalign" aria-label="Link to this section">#</a></h2>

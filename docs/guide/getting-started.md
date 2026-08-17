@@ -11,9 +11,12 @@ not rewrite your SQL for you.
 
 ## Install
 
-sqlalign needs **Python 3.12 or newer** and has exactly one runtime dependency:
-`sqlglot`, pinned to the `30.14.x` line. (The layout engine reads exact AST
-shapes, so the pin is deliberate — see the comment in `pyproject.toml`.)
+sqlalign needs **Python 3.10 or newer**. Its one runtime dependency is
+`sqlglot`, accepted as `>=30.14,<31`. The layout engine reads exact AST shapes,
+so the range is not a passive float: `tests/test_sqlglot_conformance.py` asserts
+each of those shapes by name, and CI runs the whole suite against the newest
+release the range allows as well as the locked one. On 3.10 it also installs
+`tomli`, which is `tomllib` from the standard library of every later version.
 
 ```sh
 pip install sqlalign
@@ -415,10 +418,14 @@ sqlalign --gui --dialect tsql
 
 Left: dialect, preset, and every setting. Right: an editable input pane over the
 formatted result, with a status line counting statements and naming anything that
-declined. A setting that currently does nothing is greyed out rather than left
-sitting there inert — `…indent` only applies when the SELECT list is on its own
-line, `…river gutter` only when clause keywords are set to `river` — and the
-preset box drops to `(custom)` the moment your settings stop matching it.
+declined. A setting that currently does nothing is greyed out, with a line saying
+which control it is waiting on rather than leaving it looking broken.
+
+**Save settings** writes a `.sqlalign.toml` with the values written out live,
+because they are choices you just made — the opposite of what `--init` writes,
+and for the opposite reason. The file records which preset it matches, if any,
+and the dialect you previewed with as a comment, since `dialect` has no config
+key. **Open** loads a real `.sql` file in place of the bundled samples.
 
 **Open SQL…** (`⌘O`) loads a file, and the window is named for it from then on.
 **Save formatted…** (`⌘S`) defaults to that same file, so formatting one in place
@@ -436,7 +443,20 @@ rather than failing with a traceback.
 
 ## Editors
 
-sqlalign has no editor plugin. Two recipes cover most setups.
+sqlalign has no editor plugin and does not need one: it reads stdin, writes
+stdout, and starts in about a tenth of a second, which is what every editor's
+"external formatter" setting expects.
+
+**Filter the buffer** (vim, Neovim, Helix, and anything with a `!` filter):
+
+```vim
+:%!sqlalign -
+```
+
+`-` resolves `.sqlalign.toml` from the working directory, so a committed config
+is picked up. `/dev/stdin` also works as a path, but config discovery walks up
+from the *path you named* and `/dev/stdin` is not in your repository — so that
+route needs an explicit `--config` and `-` does not.
 
 **Format on save.** Point any "run a command on save" extension at the file and
 let the editor reload it:
@@ -445,28 +465,70 @@ let the editor reload it:
 sqlalign "$FILE"
 ```
 
-**Filter the buffer** (vim, and anything with a `!` filter). sqlalign has no
-stdin mode, but it will read `/dev/stdin`:
+**VS Code.** sqlalign reads stdin, so it can be registered as a real formatter
+rather than as a command bolted onto save — which is what makes `Format
+Document`, format-on-save and format-selection all work through the same path.
+With the [Custom Local Formatters](https://marketplace.visualstudio.com/items?itemName=jkillian.custom-local-formatters)
+extension:
 
-```vim
-:%!sqlalign --stdout /dev/stdin
+```json
+{
+  "customLocalFormatters.formatters": [
+    { "command": "sqlalign -", "languages": ["sql"] }
+  ],
+  "[sql]": { "editor.formatOnSave": true }
+}
 ```
 
-That works, with one caveat: config discovery walks up from the *path you named*,
-and `/dev/stdin` is not in your repo, so a committed `.sqlalign.toml` is **not**
-picked up. Pass `--config` explicitly if you filter this way:
+Any "run a command on save" extension works too, pointed at `$FILE` as above —
+but it formats the file behind the editor's back and makes you reload, where the
+formatter route does not.
 
-```vim
-:%!sqlalign --stdout --config /path/to/.sqlalign.toml /dev/stdin
-```
+**JetBrains (DataGrip, PyCharm, IntelliJ).** Use the bundled **File Watchers**
+plugin rather than looking for a marketplace listing — Settings → Tools → File
+Watchers → `+` → `<custom>`:
 
-Formatting the real file (`:!sqlalign %` then `:e!`) has no such problem, and is
-the simpler choice inside a repo.
+| Field | Value |
+|---|---|
+| File type | SQL |
+| Program | `sqlalign` |
+| Arguments | `$FilePath$` |
+| Output paths to refresh | `$FilePath$` |
+| Advanced → Auto-save edited files | off |
+
+Turning auto-save off is what stops the watcher firing on every keystroke.
 
 ## Git pre-commit hook
 
-Format staged SQL and re-stage what changed, so what you commit is always
-formatted:
+The repository ships hooks for [pre-commit](https://pre-commit.com), which is
+the no-maintenance route:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pua2/sqlalign
+    rev: v1.1.0
+    hooks:
+      - id: sqlalign          # rewrites and restages
+      # - id: sqlalign-check  # or: only report, change nothing
+```
+
+`sqlalign` rewrites and fails so you restage — the pre-commit convention for a
+formatter. `sqlalign-check` only reports, which is what a repository you do not
+own wants.
+
+For CI there is a published action, which defaults to `--check` because an
+action that silently reformats a checkout is not what a gate is for:
+
+```yaml
+- uses: pua2/sqlalign@v1.1.0
+  # with:
+  #   args: --diff          # show the change, not just the file names
+  #   paths: models/
+```
+
+Without the framework, a hand-rolled hook that formats staged SQL and re-stages
+what changed:
 
 ```sh
 #!/bin/sh
@@ -510,6 +572,63 @@ rather than only which files are:
 sqlalign --diff .
 ```
 
+## Starting a config
+
+`sqlalign --init` writes a `.sqlalign.toml` next to you:
+
+```sh
+sqlalign --init                     # house defaults
+sqlalign --init --preset compact    # start from a published style guide
+```
+
+Every setting is written **commented out**, showing the value currently in
+effect, so the file changes nothing until you uncomment something. That is
+deliberate: a starter that arrived pinning all eighteen settings would freeze
+you on whatever the defaults were the day you ran it and call that a decision.
+
+`--preset` is the exception and is written live, because choosing one is the
+decision you just made. The commented values below it then show what that preset
+does, which makes the file worth reading as well as editing.
+
+It refuses to overwrite an existing config.
+
+## Calling it from Python
+
+The CLI is the supported surface for a repository. For a notebook, a dbt hook or
+a code generator, there are two functions:
+
+```python
+import sqlalign
+
+sqlalign.format("select a,b from t;")
+# 'SELECT a\n     , b\nFROM t;'
+
+result = sqlalign.format_result(sql, dialect="redshift")
+result.text          # the formatted SQL
+result.statements    # how many statements were seen
+result.declines      # what was passed through, and why
+```
+
+`format` returns the text. `format_result` also tells you what happened, which
+matters more than it sounds: a statement sqlalign cannot model comes back
+**byte-identical rather than raising**, so `format` alone cannot distinguish
+"formatted" from "left alone" — both are valid SQL. Anything that gates on the
+result should read `declines`.
+
+`style` takes a `Style`, so a preset carries across:
+
+```python
+from sqlalign.style import preset_style
+
+sqlalign.format(sql, style=preset_style("compact"))
+```
+
+An unsupported `dialect` raises `ValueError` rather than being formatted with
+keywords the target engine may not accept.
+
+These two names are the API. Everything else under `sqlalign.*` is internal and
+moves between releases.
+
 Because sqlalign does not lint, it slots in beside a linter rather than replacing
 one — running `sqlfluff lint` in a neighbouring step is the intended setup.
 
@@ -518,7 +637,7 @@ one — running `sqlfluff lint` in a neighbouring step is the intended setup.
 | Code | Meaning |
 |---|---|
 | `0` | Success. Files were formatted, or `--check`/`--diff` found nothing to change. Statements that passed through untouched still exit `0`. |
-| `1` | `--check` or `--diff` found at least one file that would change. Only these two modes ever return `1`. |
+| `1` | `--check` or `--diff` found at least one file that would change. `--max-declines` and `--lint` return `1` on their own findings too — `1` always means a gate found something, never a malfunction. |
 | `2` | A file could not be read, a config file is invalid, or an argument is invalid (an unsupported `--dialect`, an unknown `--align-targets` name, two output modes at once). Also an unexpected engine error on a single file. |
 
 Exit `2` is per-file where it can be: an unreadable or misconfigured file is
@@ -538,7 +657,7 @@ sqlalign nope.sql
 - **Committing a team style:** [`configuration.md`](configuration.md) — config
   file discovery, presets, and precedence.
 - **What the output looks like, construct by construct:** [`style.md`](style.md).
-- **The style itself, in the repo:** `samples/queries.sql` is 25 hand-formatted
+- **The style itself, in the repo:** `samples/queries.sql` is 29 hand-formatted
   goldens that the test suite asserts byte-for-byte. It is the executable spec.
 - **Positioning, presets and the honest comparison against other formatters:**
   the [README](../../README.md).

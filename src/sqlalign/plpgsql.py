@@ -199,11 +199,54 @@ def _upper_kw(text: str, dialect: str) -> str:
     return " ".join(t.upper() if t.upper() in kw else t for t in _tokenize_ws(text))
 
 
+def _split_comment(text: str) -> tuple[str, str | None]:
+    """`text` as (code, trailing comment or None), split outside string literals.
+
+    `_upper_kw` whitespace-tokenizes whatever it is given, so a comment left in
+    the clause had its words keyword-cased -- `-- log it for the user` shipped
+    as `-- LOG it FOR the user;`, semicolon and all, with nothing declining.
+    Comments are not code and never go through casing.
+
+    Only a comment that runs to the end of the clause is split off. One with
+    code after it (a closed `/* ... */` mid-clause, or code on the line after a
+    `--`) has no faithful single-line rendering here, so the clause declines
+    rather than guessing -- the same contract the SQL comment engine follows.
+    """
+    in_string = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "'":
+            in_string = not in_string
+        elif not in_string and ch == "-" and text.startswith("--", i):
+            comment = text[i:]
+            rest = comment.split("\n", 1)
+            if len(rest) > 1 and rest[1].strip():
+                raise Unsupported("comment inside a procedural clause")
+            return text[:i].rstrip(), comment.rstrip()
+        elif not in_string and ch == "/" and text.startswith("/*", i):
+            close = text.find("*/", i + 2)
+            if close == -1 or text[close + 2:].strip():
+                raise Unsupported("comment inside a procedural clause")
+            return text[:i].rstrip(), text[i:].rstrip()
+        i += 1
+    return text, None
+
+
 def _render_plain(text: str, dialect: str) -> str:
-    text = text.strip()
+    text, comment = _split_comment(text.strip())
     if text.lower().startswith("get diagnostics"):
-        return _render_get_diagnostics(text)
-    return _upper_kw(text, dialect)
+        rendered = _render_get_diagnostics(text)
+    else:
+        rendered = _upper_kw(text, dialect)
+    if comment is None:
+        return rendered
+    if not rendered:
+        # A clause that IS a comment: verbatim, and no semicolon -- `;` after
+        # `--` becomes part of the comment, which is how one line comment
+        # swallowed the statement terminator once before.
+        return comment
+    return f"{rendered} {comment}"
 
 
 def _render_get_diagnostics(text: str) -> str:
@@ -300,7 +343,19 @@ def _render_stmt(raw: str, dialect: str, style) -> str:
     # the final backstop). No fixture exercises those constructs.
     if _is_sql(raw, dialect):
         return _render_sql_stmt(raw, dialect, style)
-    return _render_plain(raw, dialect) + ";"
+    return _terminate(_render_plain(raw, dialect))
+
+
+def _terminate(rendered: str) -> str:
+    """`rendered` with its `;` in the right place: after the code, before any
+    trailing comment, and not at all when the clause is only a comment --
+    anything after `--` is part of the comment, including a semicolon."""
+    code, comment = _split_comment(rendered)
+    if not code:
+        return rendered
+    if not code.endswith(";"):
+        code += ";"
+    return f"{code} {comment}" if comment else code
 
 
 def _render_branch(raw: str, dialect: str) -> str:
@@ -308,7 +363,7 @@ def _render_branch(raw: str, dialect: str) -> str:
     the keyword. A SQL statement there (multi-line geometry) is declined."""
     if _is_sql(raw, dialect):
         raise Unsupported("plpgsql IF branch: SQL statement")
-    return _render_plain(raw, dialect) + ";"
+    return _terminate(_render_plain(raw, dialect))
 
 
 def _render_declare(decls: list[str], dialect: str) -> str:

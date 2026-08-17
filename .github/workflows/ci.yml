@@ -20,9 +20,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The versions pyproject claims to support. Both, because a classifier
-        # nobody runs is a guess.
-        python: ["3.12", "3.13"]
+        # Every version pyproject claims to support, because a classifier nobody
+        # runs is a guess. `test_the_python_classifiers_match_requires_python`
+        # compares this list against the classifiers, so the two cannot drift.
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    # UV_PYTHON is what makes the matrix real: without it every leg resolves the
+    # same default interpreter, and four green jobs prove one version. That is
+    # not hypothetical -- it shipped, and "3.10 passes CI" was untrue for as
+    # long as nothing consumed the matrix value.
+    env:
+      UV_PYTHON: ${{ matrix.python }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +39,16 @@ jobs:
 
       - name: Install
         run: uv sync --locked --all-extras
+
+      # The job name says a version; this step makes it true. If UV_PYTHON stops
+      # being honoured, the leg fails here rather than testing the wrong thing.
+      - name: The interpreter is the matrix version
+        run: |
+          uv run python -c "
+          import os, sys
+          want = tuple(map(int, os.environ['UV_PYTHON'].split('.')))
+          assert sys.version_info[:2] == want, f'{sys.version} is not {want}'
+          print(sys.version)"
 
       - name: Lint
         run: uv run ruff check .
@@ -80,6 +97,62 @@ jobs:
           uv run --no-sync pytest -q tests/test_sqlfluff_coexistence.py \
                                     tests/test_lint_flag.py \
                                     tests/test_bodylint.py
+
+  # `action.yml` is a published interface -- someone writes `uses: pua2/sqlalign@v1`
+  # and it either works or it does not. Nothing but running it proves the manifest
+  # parses, the inputs thread through, and a failing check actually fails the step.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: One formatted file and one that is not
+        run: |
+          mkdir -p action-test
+          printf 'select a,b from t;\n' > action-test/messy.sql
+          printf 'SELECT a\n     , b\nFROM t;\n' > action-test/tidy.sql
+
+      - name: Formatted SQL passes
+        uses: ./
+        with:
+          paths: action-test/tidy.sql
+
+      - name: Unformatted SQL fails
+        id: messy
+        continue-on-error: true
+        uses: ./
+        with:
+          paths: action-test/messy.sql
+
+      # `continue-on-error` above records the outcome instead of ending the job,
+      # so the failure can be asserted rather than merely survived.
+      - name: ...and that failure is the assertion
+        run: test "${{ steps.messy.outcome }}" = failure
+
+  # The matrix above runs whatever uv.lock pins, which is the OLDEST end of the
+  # sqlglot range in practice. The newest release the range allows is the one
+  # nothing else covers -- and it is the risky end, because the safety net cannot
+  # see an upstream shape change: ast_equal compares output to input under the
+  # same sqlglot, so both sides move together and the check stays green.
+  #
+  # This is the job that makes `>=30.14,<31` safe rather than hopeful. When it
+  # goes red, tests/test_sqlglot_conformance.py names the shape that moved.
+  sqlglot-newest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+
+      - name: Install the newest sqlglot the range allows
+        run: uv pip install --upgrade 'sqlglot>=30.14,<31'
+
+      - name: The whole suite, not just the shape assertions
+        run: |
+          uv run --no-sync python -c "import sqlglot; print(sqlglot.__version__)"
+          uv run --no-sync pytest -q
 
   # docs/v1 is generated and committed, so a stale build ships. Rebuilding here
   # proves the committed site matches its generator.

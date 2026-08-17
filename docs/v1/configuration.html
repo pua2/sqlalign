@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.0 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -324,8 +324,8 @@ error (see <a href="#unknown-keys-are-an-error">Unknown keys</a>).</p>
 <tr>
 <td><code>align_targets</code></td>
 <td>list of strings</td>
-<td>all six</td>
-<td>Which alignment columns are padded: <code>aliases</code>, <code>operators</code>, <code>join_conditions</code>, <code>case_results</code>, <code>column_types</code>, <code>column_constraints</code>. Anything omitted collapses to a single space.</td>
+<td>all but <code>table_names</code></td>
+<td>Which alignment columns are padded — the nine names in the <a href="cli.html#alignment-targets">CLI reference's target table</a>. Anything omitted collapses to a single space.</td>
 </tr>
 <tr>
 <td><code>comma_position</code></td>
@@ -604,11 +604,11 @@ exits <code>2</code> without touching a file:</p>
 </tr>
 <tr>
 <td><code>align_targets = [&quot;aliases&quot;, &quot;typo&quot;]</code></td>
-<td><code>unknown align_targets ['typo']; valid: ['aliases', 'case_results', 'column_constraints', 'column_types', 'join_conditions', 'operators']</code></td>
+<td><code>unknown align_targets ['typo']; valid: ['aliases', 'case_results', 'column_aliases', 'column_constraints', 'column_types', 'join_conditions', 'operators', 'table_aliases', 'table_names']</code></td>
 </tr>
 <tr>
 <td><code>preset = &quot;nice&quot;</code></td>
-<td><code>unknown preset 'nice'; valid: ['compact', 'dbt', 'house', 'trailing']</code></td>
+<td><code>unknown preset 'nice'; valid: ['compact', 'dbt', 'gitlab', 'house', 'river', 'trailing']</code></td>
 </tr>
 <tr>
 <td>malformed TOML</td>

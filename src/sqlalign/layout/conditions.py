@@ -28,6 +28,9 @@ line indents are baked in from `IN`'s NATURAL column, so a resolver-padded
 `IN` would silently detach the body from its own `(`. Plain `IN (list)`
 (`predicate_segs`, below) is a different code path and still right-aligns.
 """
+import functools
+
+import sqlglot
 from sqlglot import exp
 
 from sqlalign.casing import active_style, render_expr
@@ -233,6 +236,32 @@ def _render_group(paren, parent_scope, open_col, group_counter, dialect, width):
     return inline, lines
 
 
+@functools.cache
+def _keeps_negated_is_apart(dialect: str) -> bool:
+    """Whether `dialect` still distinguishes `x IS NOT NULL` from `NOT x IS NULL`.
+
+    Postgres parses the first as `Is(negate=True)` and the second as
+    `Not(Is(...))`, so a `Not(Is(...))` is the author's `NOT ... IS NULL`, and
+    printing it as `IS NOT NULL` rewrites SQL they did not write. T-SQL and
+    Redshift collapse both spellings onto `Not(Is(...))`; the distinction is gone
+    before the layout sees it, and the idiomatic spelling is then the only
+    sensible choice.
+
+    The probe uses the NULL spelling and its answer applies ONLY to a NULL (or
+    UNKNOWN, which sqlglot folds to NULL) right-hand side. The boolean forms
+    collapse even in Postgres -- `x IS NOT TRUE` and `NOT x IS TRUE` are one
+    tree -- so for those the idiomatic spelling is the only sensible choice in
+    every dialect, and treating them like NULL rewrote `x IS NOT TRUE` into
+    `NOT x IS TRUE` with nothing able to notice.
+
+    Probed rather than listed against dialect names, so a parser change upstream
+    is followed instead of silently disagreed with.
+    """
+    where = sqlglot.parse_one("SELECT 1 FROM t WHERE x IS NOT NULL",
+                              dialect=dialect).args["where"].this
+    return isinstance(where, exp.Is)
+
+
 def predicate_segs(cond, scope, dialect):
     """Split one predicate into [lhs, op(tagged), rhs] segments.
 
@@ -248,9 +277,27 @@ def predicate_segs(cond, scope, dialect):
         # Deliberately narrow: only a Not directly wrapping an Is. Every other
         # Not stays declined, which `test_not_exists_passes_through` depends on.
         inner = cond.this
-        lhs = render_expr(inner.this, dialect)
-        rhs = "NOT " + render_expr(inner.expression, dialect)
-        return [Seg(lhs), Seg("IS", scope=scope, kind="op"), Seg(rhs)]
+        inner_negated = bool(inner.args.get("negate"))
+        if _keeps_negated_is_apart(dialect) and isinstance(inner.expression, exp.Null):
+            # Here -- and only here -- the tree still says which spelling the
+            # author wrote: `x IS NOT NULL` parses to Is(negate), so a Not
+            # wrapping an Is is their `NOT ... IS [NOT] NULL` and is preserved.
+            # The inner negate rides along; dropping it turned
+            # `NOT x IS NOT NULL` into its logical inverse, which only the
+            # re-parse guard stopped from shipping.
+            rhs = ("NOT " if inner_negated else "") + render_expr(inner.expression, dialect)
+            return [Seg("NOT " + render_expr(inner.this, dialect)),
+                    Seg("IS", scope=scope, kind="op"),
+                    Seg(rhs)]
+        if not inner_negated:
+            # One tree serves both spellings here (T-SQL and Redshift for NULL,
+            # every dialect for the boolean forms), so which comes out is
+            # sqlalign's to pick, and `IS NOT x` is the idiomatic pick.
+            lhs = render_expr(inner.this, dialect)
+            rhs = "NOT " + render_expr(inner.expression, dialect)
+            return [Seg(lhs), Seg("IS", scope=scope, kind="op"), Seg(rhs)]
+        # Not(Is(negate)) in a dialect that collapses the spellings has no
+        # faithful single-IS rendering; fall through to the decline paths.
 
     # `NOT IN (...)` and `NOT BETWEEN ... AND ...`: sqlglot wraps the inner
     # predicate in a `Not`, so peeling it here puts NOT on the operator, where a

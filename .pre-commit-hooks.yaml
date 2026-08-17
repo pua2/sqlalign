@@ -1,0 +1,25 @@
+# Hooks for https://pre-commit.com. A consumer adds this repository to their
+# .pre-commit-config.yaml and picks one:
+#
+#   - repo: https://github.com/pua2/sqlalign
+#     rev: v1.1.0
+#     hooks:
+#       - id: sqlalign
+#
+# `sqlalign` rewrites and restages; `sqlalign-check` only reports. Both are the
+# same binary -- the split exists because a team adopting the style wants the
+# first, and a team gating a repository it does not own wants the second.
+
+- id: sqlalign
+  name: sqlalign
+  description: Format SQL into the columnar house style, in place.
+  entry: sqlalign
+  language: python
+  types: [sql]
+
+- id: sqlalign-check
+  name: sqlalign (check only)
+  description: Fail if any SQL file is not already formatted, and change nothing.
+  entry: sqlalign --check
+  language: python
+  types: [sql]

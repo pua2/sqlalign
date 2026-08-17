@@ -1,18 +1,26 @@
 # sqlalign
 
-A SQL formatter for **Postgres**, **Redshift** and **SQL Server** that **cannot change what your
-SQL means**. Every statement it formats is re-parsed and AST-compared against the
-input; if the output would differ semantically — or if the engine doesn't fully
-model the construct — the statement is passed through **byte-identical** with a
-warning instead. It reformats presentation and nothing else: identifiers, string
-literals, cast form (`::` vs `CAST`), `GROUP BY` references, and alias choices all
-survive exactly as written.
+A SQL formatter for **Postgres**, **Redshift** and **SQL Server** that **cannot
+change what your SQL means**. Every statement it formats is re-parsed and
+compared against the input as a syntax tree, and that tree is what "means" is
+measured by here. If the output would differ, or would carry different comments,
+or if the engine doesn't fully model the construct, the statement is passed
+through **byte-identical** with a warning instead.
+
+It reformats presentation and nothing else: identifiers, string literals, cast
+form (`::` vs `CAST`), `GROUP BY` references, comments, and alias choices all
+survive exactly as written. Two spellings do collapse at parse time and are
+therefore sqlalign's to pick rather than yours — `!=` against `<>`, and
+`decimal` against `numeric` — so both are settings rather than accidents.
+
+It formats *inside* dollar-quoted (`$$`) plpgsql procedure and function bodies,
+and **`--lint` reads inside them too, which sqlfluff cannot**: to its parser a
+body is a single string literal, so nothing within one is ever linted.
 
 Its layout is **columnar alignment**: operators, aliases, `AS` clauses, and
 `ON`/`AND` conditions are padded into vertical columns by a fixpoint resolver —
-alignment is the layout engine itself, not a post-pass over already-printed text.
-It applies that same engine *inside* dollar-quoted (`$$`) plpgsql procedure and
-function bodies.
+alignment is the layout engine itself, not a post-pass over already-printed
+text.
 
 ```sql
 FROM customers               cust
@@ -113,8 +121,19 @@ LEFT JOIN shipping_addresses addr ON addr.order_id = ord.order_id
 pip install sqlalign
 ```
 
-That puts a `sqlalign` command on your PATH. To keep it out of a project's
-environment, `uv tool install sqlalign` does the same thing in isolation.
+That puts a `sqlalign` command on your PATH.
+
+If your environment already carries sqlglot — a dbt or SQLMesh project usually
+does — install sqlalign in isolation instead, so the two version ranges cannot
+collide:
+
+```sh
+uv tool install sqlalign
+```
+
+Releases are published from CI with [signed provenance](https://pypi.org/project/sqlalign/),
+so PyPI records which repository and workflow built each artifact. For a tool
+that rewrites your source files, that is worth checking.
 
 `--lint` runs sqlfluff over the formatted result and needs the optional extra:
 
@@ -122,8 +141,10 @@ environment, `uv tool install sqlalign` does the same thing in isolation.
 pip install 'sqlalign[lint]'
 ```
 
-Requires Python ≥ 3.12. Runtime dependency: `sqlglot` (pinned to the 30.14.x
-line — the layout engine depends on exact AST shapes; see `pyproject.toml`).
+Requires Python ≥ 3.10. Runtime dependency: `sqlglot` (`>=30.14,<31` — the
+layout engine reads exact AST shapes, which a test suite asserts by name across
+the range; see `pyproject.toml`), plus `tomli` on 3.10, which later versions ship
+as `tomllib`.
 
 To work on sqlalign itself, install from a clone instead — that adds the dev
 tools (`pytest`, `ruff`, `sqlfluff`):
@@ -135,11 +156,21 @@ uv sync
 
 ## Usage
 
+Look before you leap — this is a formatter with an opinion, and the first thing
+worth knowing is what it would do to your SQL:
+
+```sh
+sqlalign --diff .                  # show what would change, write nothing
+sqlalign --check .                 # exit non-zero if anything would change
+```
+
+Then, once you have seen it:
+
 ```sh
 sqlalign query.sql                 # format in place (rewrites the file)
 sqlalign .                         # every *.sql under here, recursively
 sqlalign --stdout query.sql        # print the formatted result, leave the file
-sqlalign --check *.sql             # exit non-zero if any file is not formatted
+cat query.sql | sqlalign -         # read stdin, write stdout
 sqlalign --dialect redshift ddl.sql
 sqlalign --dialect tsql query.sql   # SQL Server: TOP, [brackets]
 sqlalign --width 120 query.sql
@@ -174,7 +205,25 @@ WHERE ord.order_date >= '2026-07-01'
   AND cust.segment    = 'enterprise';
 ```
 
+## In a pipeline
+
+```yaml
+# .pre-commit-config.yaml                    # GitHub Actions
+repos:                                       - uses: pua2/sqlalign@v1.1.0
+  - repo: https://github.com/pua2/sqlalign   #   defaults to --check: a gate,
+    rev: v1.1.0                              #   not a formatter
+    hooks:
+      - id: sqlalign          # or sqlalign-check to report only
+```
+
+Details and editor recipes are in the [guide](docs/guide/getting-started.md).
+
 ## dbt / Jinja
+
+**Scope first:** the templating is handled, the warehouses mostly are not.
+sqlalign parses Postgres, Redshift and SQL Server, so a dbt project on Snowflake
+or BigQuery will parse some models and decline others. Snowflake is the next
+dialect. If your warehouse is one of the three, read on.
 
 Templated SQL isn't valid SQL, so most formatters decline it. sqlalign masks each
 template expression with a **same-width** placeholder, formats normally, then puts
@@ -222,16 +271,25 @@ body_blank_lines          = 1              # inside a $$ body
 river_gutter              = 6
 ```
 
-Start from a **preset** and override what you want:
+Start from a **preset** and override what you want. If your team already follows
+a published style guide, start at `compact` or the guide's own preset rather than
+at `house` — the alignment is the house opinion, not a prerequisite:
 
 | Preset | What it is |
 |---|---|
 | `house` | the columnar default — aligned, leading separators, `ON` inline |
-| `compact` | same line structure, no alignment padding (9 of 10 style guides are unpadded) |
+| `compact` | **the one to start from if you follow a published guide** — same line structure, no alignment padding, which is what 9 of 10 of them ask for |
 | `trailing` | keeps the alignment, moves commas and `AND`/`OR` to end of line |
 | `dbt` | lowercase keywords, list stacked under a bare `select` at 4, trailing commas, no padding (one deviation: a CTE body indents 2, not 4) |
 | `river` | [Holywell's guide](https://www.sqlstyle.guide/) — root keywords right-aligned to a 6-column gutter, joins on the far side of it, otherwise unpadded |
 | `gitlab` | [GitLab's published guide](https://handbook.gitlab.com/handbook/enterprise-data/platform/sql-style-guide/) — list stacked at 2, trailing commas, `ON` on its own line, `AS` on table aliases, and column aliases the only thing aligned |
+
+One consequence worth knowing before you adopt `house`: **alignment padding means
+a diff is wider than the line you edited.** Rename a column to something longer
+and every row in that block shifts to keep the column, so a one-token change can
+touch twenty lines. That is inherent to columnar alignment rather than a bug in
+this implementation — `compact` and `--no-align` keep the line structure and drop
+the padding, and both make a diff show only what changed.
 
 ```toml
 preset         = "compact"
@@ -316,7 +374,7 @@ not cover.
 
 ## Guarantees & scope
 
-- **Byte-for-byte golden fixtures** — 25 hand-formatted samples in
+- **Byte-for-byte golden fixtures** — 29 hand-formatted samples in
   `tests/fixtures/expected/` are the executable specification of the style; the
   suite asserts `format(input) == expected` for every one, plus idempotency
   (`format(expected) == expected`) and AST-equivalence.
@@ -384,6 +442,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `uv sync`, then `uv run pytest
 -q` and `uv run ruff check .` must both be clean — CI runs the same checks on
 every pull request. The goldens in `tests/fixtures/expected/` are the
 specification, not snapshots.
+
+**The style does not change in a patch release.** The goldens in
+`tests/fixtures/expected/` are compared byte for byte in their own CI job, so an
+unintended layout change cannot reach a release; an intended one waits for a
+minor version and is named in the changelog. See
+[Stability](docs/guide/style.md).
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
