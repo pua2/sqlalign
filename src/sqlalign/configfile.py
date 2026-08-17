@@ -42,11 +42,34 @@ _SCALAR_KEYS = frozenset({
     "keyword_case",
 })
 KNOWN_KEYS = _SCALAR_KEYS | {"width", "align_targets", "preset", "exclude",
-                            "blank_lines_between_statements"}
+                            "dialect", "blank_lines_between_statements"}
 
-# `exclude` selects FILES rather than style, so it is read separately and never
-# reaches Style. Kept in KNOWN_KEYS so a config carrying it is still valid.
-_NON_STYLE_KEYS = frozenset({"exclude"})
+# Keys that are read separately and never reach Style. `exclude` selects FILES
+# rather than style; `dialect` is the grammar to parse and emit, which is not a
+# style choice either -- putting it in Style would leak it into --show-config's
+# style block and into the starter config as though it were a knob.
+#
+# `dialect` is a config key even though sqlalign refuses to GUESS a dialect.
+# Those are different things: guessing means sniffing the file, which the safety
+# guarantee cannot cover, while this is the author declaring the engine once, in
+# a file their team reviews. It is more explicit than a flag typed into an
+# editor's tool settings and never looked at again.
+_NON_STYLE_KEYS = frozenset({"exclude", "dialect"})
+
+
+def load_dialect(path: Path, *, strict: bool = True) -> str | None:
+    """The `dialect` from a config file, or None if it does not set one."""
+    from sqlalign.style import SUPPORTED_DIALECTS
+
+    settings, _ = load_settings(path, strict=strict)
+    dialect = settings.get("dialect")
+    if dialect is None:
+        return None
+    if not isinstance(dialect, str) or dialect not in SUPPORTED_DIALECTS:
+        raise ConfigError(
+            f"{path}: unknown dialect {dialect!r}; "
+            f"valid: {sorted(SUPPORTED_DIALECTS)}")
+    return dialect
 
 
 def load_excludes(path: Path, *, strict: bool = True) -> list[str]:

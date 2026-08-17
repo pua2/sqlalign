@@ -72,7 +72,10 @@ def test_tsql_paging_does_not_crash():
         "select a from t order by a offset 10 rows fetch next 5 rows only;", "tsql")
     assert result.warnings == []
     assert not any("internal formatter error" in w for w in result.warnings)
-    assert result.text.endswith("OFFSET 10\nFETCH NEXT 5 ROWS ONLY;")
+    # T-SQL requires ROWS after OFFSET; emitting it bare produced SQL Server
+    # rejects, which the AST check could not see because both spellings
+    # parse to one Offset node carrying only the number.
+    assert result.text.endswith("OFFSET 10 ROWS\nFETCH NEXT 5 ROWS ONLY;")
 
 
 # ---- predicates -----------------------------------------------------------

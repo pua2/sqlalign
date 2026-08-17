@@ -30,7 +30,24 @@ directory with the right flag, or use `--exclude` to split the run.
 **There is no dialect auto-detection.** sqlalign will not sniff your file, and
 naming the wrong dialect is not covered by the safety guarantee — that guarantee
 is scoped to the dialect you asked for, and the layout handlers emit *that*
-dialect's keywords. Pass the flag that matches the engine the file will run on.
+dialect's keywords. Name the engine the file will run on.
+
+**Declare it once, in the config.** Guessing and declaring are different acts:
+
+```toml
+# redshift-warehouse/.sqlalign.toml
+dialect = "redshift"
+```
+
+The dialect is then resolved per file, from the config nearest it — so one
+command, one editor action or one pre-commit hook can span a Postgres repository
+and a Redshift one and be right in both, without anyone choosing correctly each
+time. `--dialect` still overrides it for a one-off run, and an unknown value is
+refused rather than attempted, exactly as the flag is.
+
+That is not sniffing. It is the author naming the engine in a file their team
+reviews, which is more explicit than a flag typed into an editor's tool settings
+and never looked at again.
 
 **A dialect outside the three is refused, not attempted.** The CLI rejects the
 argument outright:

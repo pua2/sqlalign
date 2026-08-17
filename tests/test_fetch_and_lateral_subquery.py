@@ -43,7 +43,7 @@ def test_the_fetch_variants(sql, expect):
 def test_offset_precedes_fetch_on_its_own_line():
     """The ANSI form is `OFFSET n ROWS FETCH NEXT m ROWS ONLY` — the opposite
     order from `LIMIT n OFFSET m`, which share one line."""
-    assert fmt("select a from t offset 10 rows fetch next 5 rows only;") == (
+    assert fmt("select a from t offset 10 fetch next 5 rows only;") == (
         "SELECT a\nFROM t\nOFFSET 10\nFETCH NEXT 5 ROWS ONLY;"
     )
 
@@ -103,7 +103,7 @@ def test_a_plain_derived_table_is_unaffected():
 
 SHAPES = [
     "select a from t order by a fetch first 5 rows only;",
-    "select a from t offset 10 rows fetch next 5 rows only;",
+    "select a from t offset 10 fetch next 5 rows only;",
     "select 1 from a, lateral (select x from b) c;",
     "select 1 from a cross join lateral (select x from b) c;",
 ]

@@ -488,6 +488,10 @@ formatter route does not.
 plugin rather than looking for a marketplace listing — Settings → Tools → File
 Watchers → `+` → `<custom>`:
 
+If your projects target different engines, put `dialect = "redshift"` (or
+`postgres`, `tsql`) in each one's `.sqlalign.toml` — the watcher then needs no
+`--dialect` and is right in every project.
+
 | Field | Value |
 |---|---|
 | File type | SQL |

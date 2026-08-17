@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -569,6 +569,9 @@ formatter route does not.</p>
 <p><strong>JetBrains (DataGrip, PyCharm, IntelliJ).</strong> Use the bundled <strong>File Watchers</strong>
 plugin rather than looking for a marketplace listing — Settings → Tools → File
 Watchers → <code>+</code> → <code>&lt;custom&gt;</code>:</p>
+<p>If your projects target different engines, put <code>dialect = &quot;redshift&quot;</code> (or
+<code>postgres</code>, <code>tsql</code>) in each one's <code>.sqlalign.toml</code> — the watcher then needs no
+<code>--dialect</code> and is right in every project.</p>
 <table>
 <thead>
 <tr>

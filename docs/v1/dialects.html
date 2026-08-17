@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.1 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -229,7 +229,19 @@ directory with the right flag, or use <code>--exclude</code> to split the run.</
 <p><strong>There is no dialect auto-detection.</strong> sqlalign will not sniff your file, and
 naming the wrong dialect is not covered by the safety guarantee — that guarantee
 is scoped to the dialect you asked for, and the layout handlers emit <em>that</em>
-dialect's keywords. Pass the flag that matches the engine the file will run on.</p>
+dialect's keywords. Name the engine the file will run on.</p>
+<p><strong>Declare it once, in the config.</strong> Guessing and declaring are different acts:</p>
+<pre><code class="language-toml"># redshift-warehouse/.sqlalign.toml
+dialect = &quot;redshift&quot;
+</code></pre>
+<p>The dialect is then resolved per file, from the config nearest it — so one
+command, one editor action or one pre-commit hook can span a Postgres repository
+and a Redshift one and be right in both, without anyone choosing correctly each
+time. <code>--dialect</code> still overrides it for a one-off run, and an unknown value is
+refused rather than attempted, exactly as the flag is.</p>
+<p>That is not sniffing. It is the author naming the engine in a file their team
+reviews, which is more explicit than a flag typed into an editor's tool settings
+and never looked at again.</p>
 <p><strong>A dialect outside the three is refused, not attempted.</strong> The CLI rejects the
 argument outright:</p>
 <pre><code class="language-console">$ sqlalign --dialect mysql q.sql

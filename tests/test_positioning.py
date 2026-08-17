@@ -168,3 +168,20 @@ def test_the_shipped_hooks_are_documented():
     started = GUIDE["getting-started.md"]
     assert "id: sqlalign" in started
     assert "uses: pua2/sqlalign@" in started
+
+
+def test_every_decline_reason_the_engine_emits_is_explained():
+    """A user meeting a new warning needs somewhere to look. `respell` was a new
+    reason in 1.2 and would otherwise have shipped as an unexplained string."""
+    import re
+
+    source = "".join((ROOT / "src" / "sqlalign" / f).read_text()
+                     for f in ("cli.py", "formatter.py"))
+    reasons = set(re.findall(r'Decline\("safety", "([^"]+)"\)', source))
+    assert reasons, "no safety declines found; has the shape changed?"
+    prose = "\n".join(GUIDE.values())
+    for reason in reasons:
+        # The docs describe them in the user's words, not the enum's, so match
+        # on the distinguishing verb rather than the whole string.
+        verb = reason.split()[-2] if len(reason.split()) > 2 else reason
+        assert verb in prose, f"decline reason {reason!r} is not explained anywhere"

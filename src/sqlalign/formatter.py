@@ -5,7 +5,7 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.errors import TokenError
 
-from sqlalign import keywordcase, plpgsql, templating
+from sqlalign import keywordcase, plpgsql, spelling, templating
 from sqlalign.align import apply_align_targets, render
 from sqlalign.casing import parse_dialect, render_style
 from sqlalign.commas import apply_comma_position
@@ -37,6 +37,16 @@ _TRAILING_COMMENT_RE = re.compile(r";\s*(?:--[^\n]*|/\*.*?\*/)\s*\Z", re.DOTALL)
 
 class SafetyError(RuntimeError):
     pass
+
+
+class Rewrite(SafetyError):
+    """The output spells something differently from the input.
+
+    A sibling of `CommentLoss` for the same reason: it shares the
+    upstream-round-trip branch while being reported as its own cause. Losing a
+    comment, changing an expression, and respelling a construct are three
+    different bugs.
+    """
 
 
 class CommentLoss(SafetyError):
@@ -306,6 +316,38 @@ def comments_equal(a: str, b: str, dialect: str) -> bool:
         # gets a refusal rather than an exception -- if the comments cannot be
         # compared, the honest answer is that they were not verified.
         return False
+
+
+def _has_body(sql: str, dialect: str) -> bool:
+    """Whether the statement carries a body sqlalign reformats internally.
+
+    A `$$` body is one string literal to the tokenizer, and a T-SQL
+    `CREATE PROCEDURE ... AS BEGIN ... END` is the same shape spelled
+    differently, so laying either out changes tokens for a reason that is not a
+    rewrite. Both are already compared structurally.
+    """
+    if plpgsql.split_body(sql) is not None:
+        return True
+    try:
+        node = sqlglot.parse_one(sql, dialect=dialect)
+    except Exception:
+        return False
+    return (isinstance(node, exp.Create)
+            and str(node.args.get("kind") or "").upper() in {"PROCEDURE", "FUNCTION"})
+
+
+def spelling_equal(a: str, b: str, dialect: str) -> bool:
+    """Whether `b` spells everything the way `a` did.
+
+    Compared after normalizing the three things sqlalign's settings choose --
+    keyword case, optional `AS`, and synonym spellings -- so an ordinary
+    reformat is equal and only a change the author did not ask for is not.
+    """
+    try:
+        return (spelling.token_census(a, dialect)
+                == spelling.token_census(b, dialect))
+    except TokenError:
+        return True     # unreadable input declines earlier; do not invent a reason
 
 
 def ast_equal(a: str, b: str, dialect: str) -> bool:
@@ -626,6 +668,16 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                 # invisible to every safety check in the engine.
                 if not comments_equal(stmt, formatted, dialect):
                     raise CommentLoss(f"formatting changed a comment near: {snippet}")
+                # The AST check cannot see a rewrite sqlglot's own parser makes:
+                # both sides go through it and collapse to one tree, so
+                # `ALTER COLUMN x TYPE t` printed as `SET DATA TYPE t` compares
+                # equal. Comparing tokens catches it. Statements with a body are
+                # excluded -- the tokenizer sees a `$$` body as one string
+                # literal, so reformatting inside one reads as a changed token,
+                # and those are compared structurally by `_plpgsql_ast_equal`.
+                if not _has_body(stmt, dialect) and not spelling_equal(
+                        stmt, formatted, dialect):
+                    raise Rewrite(f"formatting respelled the statement near: {snippet}")
             except Unsupported as exc:
                 # The reason rides in the message so `--report` can name the
                 # construct, not just count the declines.
@@ -646,7 +698,11 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                     declines.append(Decline("upstream", "sqlglot round-trip is unstable"))
                     emit(stmt, True)
                     continue
-                if isinstance(safety, CommentLoss):
+                if isinstance(safety, Rewrite):
+                    warnings.append("formatting would respell this statement, passed "
+                                    f"through unformatted: {snippet}")
+                    declines.append(Decline("safety", "output would respell the statement"))
+                elif isinstance(safety, CommentLoss):
                     warnings.append("formatting would change a comment, passed through "
                                     f"unformatted: {snippet}")
                     declines.append(Decline("safety", "output would change a comment"))

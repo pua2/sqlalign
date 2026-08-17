@@ -117,11 +117,11 @@ else is an error unless you pass `--no-strict-config`.
 
 `align` · `align_targets` · `blank_lines_between_statements` ·
 `boolean_operator_position` · `clause_keyword_align` · `comma_position` ·
-`decimal_style` · `exclude` · `format_dollar_bodies` · `keyword_case` ·
+`decimal_style` · `dialect` · `exclude` · `format_dollar_bodies` · `keyword_case` ·
 `neq_style` · `on_placement` · `preset` · `protect_templating` · `river_gutter` ·
 `select_indent` · `select_placement` · `table_alias_style` · `width`
 
-`--dialect` and `--line-ending` are the only settings with no config key. Three
+`--line-ending` is the only setting with no config key. Three
 of the four `--no-*` flags map onto the positive keys: `--no-align` is
 `align = false`, `--no-protect-templating` is `protect_templating = false`, and
 `--no-format-bodies` is `format_dollar_bodies = false`. The fourth,
