@@ -56,8 +56,30 @@ The declines you are most likely to meet in ordinary Postgres SQL:
 | Cursors, `FOR` loops, `EXCEPTION` blocks in a `$$` body | declines per statement inside the body, so the rest of the procedure still formats |
 | T-SQL `IF`/`WHILE` inside a procedure body | sqlglot leaves part of the body unparsed, so there is no tree to lay out — see [Dialects](dialects.md) |
 | A comment buried inside an expression, or in a positional `GROUP BY 1, 2` | the whole statement passes through rather than the comment being moved or restyled. Every clause that gets one row per term — the select list, `FROM`, `WHERE`/`HAVING`/`QUALIFY`, `GROUP BY`, `ORDER BY` — is modelled |
+| Single-line DDL with a spelling sqlglot does not keep — `ALTER COLUMN x TYPE t`, `DROP FUNCTION f()`, `COPY … WITH CSV HEADER` | reported as `would respell this statement`; see below |
 
 Per-dialect decline lists are on the [Dialects](dialects.md) page.
+
+### Why "would respell this statement"?
+
+Because formatting it would hand back SQL you did not write.
+
+sqlglot's parser collapses some spellings before sqlalign ever sees them.
+`ALTER COLUMN x TYPE text` and `ALTER COLUMN x SET DATA TYPE text` are one node,
+so the information about which you wrote is gone, and printing either one back
+compares equal to the tree check. The same happens to `DROP FUNCTION f()`, whose
+empty argument list names the overload, and to `COPY … WITH CSV HEADER FORCE
+QUOTE a, b`, where one option comes back as three.
+
+sqlalign cannot preserve what it was never given, so it declines: your statement
+is passed through byte-identical, exactly as any other decline. Before 1.2 these
+were rewritten silently, which was the worse of the two.
+
+The check counts the tokens either side of formatting and fires when one is
+gained or lost. Order is not compared — the tree check already covers anything
+that moved — and the spellings sqlalign's own settings choose between
+(`!=`/`<>`, `DECIMAL`/`NUMERIC`, an optional `AS`, type synonyms like
+`INT`/`INTEGER`) are normalised away, so an ordinary reformat never trips it.
 
 ## Why won't it fix my SQL?
 

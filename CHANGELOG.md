@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.2.0
+
+### sqlalign no longer respells your statements silently
+
+The safety net compares output against input as a syntax tree, under the same
+sqlglot. That is blind to a rewrite sqlglot's own parser performs: two spellings
+collapse to one node, so printing either compares equal. Twenty statements went
+through changed, with no decline and no warning -- `ADD COLUMN c INTEGER ARRAY`
+came back as `INT`, `DROP FUNCTION f()` lost the signature that names the
+overload, `WITH CSV HEADER FORCE QUOTE a, b` became three options where the
+author wrote one, and T-SQL `SET (LOCK_ESCALATION = AUTO)` gained an invented
+`WITH (...)` that SQL Server does not accept.
+
+Each statement's tokens are now counted either side of formatting, and one that
+gained or lost a token is passed through byte-identical instead. Nothing here is
+a hand-kept list of allowed differences: type synonyms are derived by asking
+sqlglot which spellings parse to the same node, so a new dialect or a renamed
+type is followed rather than disagreed with, and the three settings that choose
+a spelling are normalised away because choosing is their job.
+
+Order is deliberately not compared. The tree already catches anything that
+moved, so the two checks divide the space -- and comparing order here would
+decline `GROUP BY ROLLUP(a, b), c` printed as `GROUP BY c, ROLLUP(a, b)`, which
+is the same grouping sets.
+
+### Fixed
+
+- **T-SQL paging emitted invalid SQL.** `OFFSET 10 ROWS` came back as
+  `OFFSET 10`, which SQL Server rejects. `Offset` records only the number, so
+  the AST check could not tell the spellings apart; the keyword is now emitted
+  where the dialect requires it, asked of sqlglot rather than hardcoded.
+
+### `dialect` is a config key
+
+```toml
+# redshift-warehouse/.sqlalign.toml
+dialect = "redshift"
+```
+
+Resolved per file from the config nearest it, so one command -- one editor
+action, one pre-commit hook -- can span a Postgres repository and a Redshift one
+and be right in both. `--dialect` still overrides for a one-off run.
+
+This is not the auto-detection sqlalign refuses to do. Sniffing a file cannot be
+covered by the safety guarantee; declaring the engine in a file your team
+reviews is the opposite of a guess, and more explicit than a flag typed into an
+editor's tool settings and never looked at again.
+
+### Fixed
+
+- `CREATE OR ALTER VIEW` came back as `CREATE OR REPLACE VIEW` under T-SQL --
+  Postgres syntax written into a T-SQL file, which the AST check could not
+  reject because both spellings parse to the same `replace` flag.
+
 ## 1.1.0
 
 ### The guarantee now covers comments

@@ -11,6 +11,9 @@ Split into `group_lines` and `order_limit_lines` (rather than one combined
 function) so select.py can splice a HAVING block — via conditions.py's
 `condition_block`: between GROUP BY and ORDER BY.
 """
+import functools
+
+import sqlglot
 from sqlglot import exp
 
 from sqlalign.casing import render_expr
@@ -22,6 +25,24 @@ def _clause_line(keyword, tail, anchor):
     """`(indent, segs)` for a one-line clause, honouring the river."""
     kw_anchor, kw_text = clause_head(keyword, anchor)
     return kw_anchor, [Seg(kw_text), Seg(tail)]
+
+
+@functools.cache
+def _offset_rows(dialect: str) -> str:
+    """` ROWS` where the dialect's OFFSET requires it, otherwise empty.
+
+    `Offset` records only the number -- whether the author wrote `OFFSET 10` or
+    `OFFSET 10 ROWS` is gone by the time the layout sees it. T-SQL requires the
+    keyword, so omitting it emitted SQL Server rejects, and the AST check could
+    not tell: both spellings parse to that same node.
+
+    Asked of sqlglot's generator rather than tested against a dialect name, so a
+    dialect whose grammar differs is followed.
+    """
+    rendered = sqlglot.parse_one(
+        "SELECT a FROM t ORDER BY a OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY",
+        dialect=dialect).sql(dialect).upper()
+    return " ROWS" if "OFFSET 1 ROWS" in rendered else ""
 
 
 def _fetch_tail(fetch, dialect):
@@ -112,8 +133,9 @@ def order_limit_lines(select, anchor, dialect, width):
         # precedes it in the ANSI form (`OFFSET n ROWS FETCH NEXT m ROWS ONLY`)
         # rather than following it the way it follows LIMIT.
         if offset is not None:
-            lines.append(Line(*_clause_line("OFFSET", render_expr(offset.expression, dialect),
-                                            anchor)))
+            lines.append(Line(*_clause_line(
+                "OFFSET", render_expr(offset.expression, dialect) + _offset_rows(dialect),
+                anchor)))
             offset = None
         lines.append(Line(*_clause_line("FETCH", _fetch_tail(limit, dialect), anchor)))
         limit = None
@@ -125,7 +147,10 @@ def order_limit_lines(select, anchor, dialect, width):
         # docs/.../2026-08-11-tsql-findings.md.
         segs += [Seg("LIMIT"), Seg(render_expr(limit.expression, dialect))]
     if offset is not None:
-        segs += [Seg("OFFSET"), Seg(render_expr(offset.expression, dialect))]
+        # Same requirement as the FETCH branch above: T-SQL's OFFSET needs ROWS
+        # whether or not a FETCH follows it.
+        segs += [Seg("OFFSET"),
+                 Seg(render_expr(offset.expression, dialect) + _offset_rows(dialect))]
     if segs:
         kw_anchor, kw_text = clause_head(segs[0].text, anchor)
         segs[0] = Seg(kw_text)

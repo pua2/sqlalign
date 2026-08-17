@@ -176,7 +176,7 @@ def test_tsql_paging_formats():
         "SELECT a\n"
         "FROM t\n"
         "ORDER BY a\n"
-        "OFFSET 10\n"
+        "OFFSET 10 ROWS\n"
         "FETCH NEXT 5 ROWS ONLY;"
     )
 
@@ -247,3 +247,28 @@ def test_a_plain_body_has_no_unparsed_remainder():
                               read="tsql").args["expression"]
     assert not any(isinstance(n, exp.Command) for n in block.walk())
     assert _fmt("create procedure p as begin select 1; end").warnings == []
+
+
+def test_create_or_alter_keeps_the_tsql_spelling():
+    """sqlglot records `CREATE OR REPLACE VIEW` and T-SQL's `CREATE OR ALTER
+    VIEW` as the same `replace=True`, so the source spelling is not in the tree.
+    Printing a fixed "OR REPLACE" put Postgres syntax into a T-SQL file, and the
+    AST check could not reject it because both spellings parse to that one flag.
+    """
+    result = format_sql("CREATE OR ALTER VIEW v AS SELECT a FROM t;", "tsql")
+    assert not result.declines, result.declines
+    assert "CREATE OR ALTER VIEW" in result.text, result.text
+    assert "OR REPLACE" not in result.text
+
+
+@pytest.mark.parametrize("dialect", ["postgres", "redshift"])
+def test_or_replace_is_untouched_where_it_is_correct(dialect):
+    result = format_sql("CREATE OR REPLACE VIEW v AS SELECT a FROM t;", dialect)
+    assert not result.declines
+    assert "CREATE OR REPLACE VIEW" in result.text
+
+
+def test_a_plain_create_view_gains_nothing():
+    result = format_sql("CREATE VIEW v AS SELECT a FROM t;", "tsql")
+    assert not result.declines
+    assert "OR ALTER" not in result.text and "OR REPLACE" not in result.text

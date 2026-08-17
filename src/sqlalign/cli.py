@@ -13,7 +13,14 @@ from sqlalign import configfile
 from sqlalign.formatter import format_sql
 from sqlalign.lint import LintUnavailable, lint, version_warning
 from sqlalign.sqlfluffconfig import sqlfluff_config
-from sqlalign.style import ALL_ALIGN_TARGETS, PRESETS, SUPPORTED_DIALECTS, Style
+from sqlalign.style import (
+    ALL_ALIGN_TARGETS,
+    PRESETS,
+    SUPPORTED_DIALECTS,
+    Style,
+)
+
+DEFAULT_DIALECT = "postgres"
 
 
 def _write_atomically(path: Path, text: str) -> None:
@@ -192,8 +199,12 @@ def build_parser() -> argparse.ArgumentParser:
     output_mode.add_argument("--diff", action="store_true",
                              help="write nothing; print a unified diff of what would "
                                   "change (exit 1 if anything would)")
-    p.add_argument("--dialect", choices=sorted(SUPPORTED_DIALECTS), default="postgres",
-                   help="the SQL dialect to parse and print (default: postgres)")
+    # No argparse default: it has to stay possible to tell "the user asked for
+    # postgres" from "the user said nothing", or a config `dialect` could never
+    # win over a default nobody chose.
+    p.add_argument("--dialect", choices=sorted(SUPPORTED_DIALECTS), default=None,
+                   help="the SQL dialect to parse and print. Overrides a "
+                        "`dialect` in the config file (default: postgres)")
     p.add_argument("--line-ending", choices=["auto", "lf", "crlf"], default="auto",
                    help="line endings to write: auto preserves the file's own (default)")
     # Config-file plumbing.
@@ -309,6 +320,22 @@ def main(argv: list[str] | None = None) -> int:
         "on_placement": args.on_placement,
     }
 
+    def dialect_for(path: Path) -> str:
+        """The dialect for one input file: flag, then config, then postgres.
+
+        The flag wins so a one-off run can override a committed config, which is
+        the same precedence every style setting already follows.
+        """
+        if args.dialect is not None:
+            return args.dialect
+        if args.isolated:
+            return DEFAULT_DIALECT
+        config = args.config if args.config is not None else configfile.find_config(path)
+        if config is None:
+            return DEFAULT_DIALECT
+        return configfile.load_dialect(
+            config, strict=not args.no_strict_config) or DEFAULT_DIALECT
+
     def style_for(path: Path) -> Style:
         """Settings for one input file: house defaults < config file < flags.
         Resolved per file so one invocation can span repos with different
@@ -345,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.gui:
         from sqlalign.gui import run
-        return run(args.dialect)
+        return run(dialect_for(Path(".")))
 
     if not args.files and not (args.print_sqlfluff_config or args.gui or args.init):
         p.error("the following arguments are required: files")
@@ -367,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.files else configfile.build_style({}, overrides))
         except configfile.ConfigError as e:
             p.error(str(e))
-        print(sqlfluff_config(style, args.dialect), end="")
+        print(sqlfluff_config(style, dialect_for(Path("."))), end="")
         return 0
 
     if args.show_config:
@@ -380,6 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         for w in warns:
             print(f"sqlalign: {w}", file=sys.stderr)
         print(f"# {source}" if source else "# built-in defaults (no config file found)")
+        # Printed with the settings because it IS one, and this output is
+        # documented as TOML a reader could paste back -- omitting a key would
+        # make the pasted config mean something different. Kept above the style
+        # block, and out of Style, because it selects the grammar rather than
+        # the layout.
+        print(f'dialect = "{dialect_for(Path(args.files[0]))}"')
         print(configfile.describe(style))
         return 0
 
@@ -448,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write(original)
             continue
         try:
-            result = format_sql(normalized, args.dialect, style)
+            result = format_sql(normalized, dialect_for(path), style)
         except Exception as e:  # parse/safety failures surface as exit 2, file untouched
             print(f"sqlalign: {name}: {e}", file=sys.stderr)
             rc = 2
@@ -496,7 +529,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.lint:
             # Lint what would be written, so --check and --stdout report on the
             # formatted result rather than on whatever is currently on disk.
-            code, out, err = lint(path, formatted, style, args.dialect)
+            code, out, err = lint(path, formatted, style, dialect_for(path))
             sys.stdout.write(out)
             sys.stderr.write(err)
             if code:

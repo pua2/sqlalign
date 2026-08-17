@@ -35,12 +35,17 @@ def test_the_changelog_documents_the_version_being_shipped():
     """A release whose notes are one version behind is one nobody can read the
     notes for. The release workflow checks the tag against this version, so this
     is the half of the agreement that CI cannot see."""
-    versions = [line[3:].strip() for line in (ROOT / "CHANGELOG.md").read_text().splitlines()
+    headings = [line[3:].strip() for line in (ROOT / "CHANGELOG.md").read_text().splitlines()
                 if line.startswith("## ")]
-    assert PROJECT["version"] in versions, (
-        f"pyproject is {PROJECT['version']}, and CHANGELOG.md documents {versions[:3]}")
-    assert versions[0] == PROJECT["version"], (
-        f"CHANGELOG.md leads with {versions[0]}, not the version being shipped")
+    # An `Unreleased` section is where changes accumulate between releases, so it
+    # is allowed to sit on top. What must hold is that the version being shipped
+    # is the first RELEASED heading under it -- a changelog one version behind is
+    # one nobody can read the notes for.
+    released = [h for h in headings if h.lower() != "unreleased"]
+    assert PROJECT["version"] in released, (
+        f"pyproject is {PROJECT['version']}, and CHANGELOG.md documents {released[:3]}")
+    assert released[0] == PROJECT["version"], (
+        f"CHANGELOG.md's newest release is {released[0]}, not the version being shipped")
 
 
 def _as_version(text: str) -> tuple[int, ...]:

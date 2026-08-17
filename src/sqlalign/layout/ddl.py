@@ -13,6 +13,9 @@ reuse `layout_statement` for the SELECT body. TRUNCATE / CREATE INDEX / GRANT
 are utility one-liners (INDEX breaks its partial `WHERE` when over width;
 TRUNCATE drops its RESTART/CASCADE options to a second line).
 """
+import functools
+
+import sqlglot
 from sqlglot import exp
 
 from sqlalign.casing import render_expr
@@ -110,12 +113,30 @@ def _create_procedure_lines(node, dialect, width, anchor):
     return lines
 
 
+@functools.cache
+def _replace_clause(dialect: str, kind: str) -> str:
+    """How `dialect` spells the `replace` flag for a CREATE of this kind.
+
+    sqlglot records `CREATE OR REPLACE VIEW` and T-SQL's `CREATE OR ALTER VIEW`
+    as the same `replace=True`, so the source spelling is not in the tree and
+    printing a fixed "OR REPLACE" emitted Postgres syntax into a T-SQL file --
+    valid-looking output the AST check cannot reject, because both spellings
+    parse to that one flag.
+
+    Asked of sqlglot's own generator rather than listed here, so a dialect whose
+    spelling differs is followed rather than silently disagreed with.
+    """
+    rendered = sqlglot.parse_one(
+        f"CREATE OR REPLACE {kind} x AS SELECT 1", dialect=dialect).sql(dialect)
+    return "OR ALTER" if "OR ALTER" in rendered.upper() else "OR REPLACE"
+
+
 def _create_as_lines(node, dialect, width, anchor):
     """CTAS / CREATE [OR REPLACE] [MATERIALIZED] VIEW name AS <select>."""
     kind = node.args.get("kind").upper()
     parts = ["CREATE"]
     if node.args.get("replace"):
-        parts.append("OR REPLACE")
+        parts.append(_replace_clause(dialect, kind))
     if _has_property(node, exp.MaterializedProperty):
         parts.append("MATERIALIZED")
     parts.append(kind)
