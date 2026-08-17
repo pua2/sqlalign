@@ -19,9 +19,17 @@ Defaults marked *(house)* are what you get with no config file and no flags.
 | `files …` | required | One or more files or directories. A **directory** is searched recursively for `*.sql`, in sorted order so a run is reproducible. At least one path is required, including with `--show-config`. |
 | `-h`, `--help` | — | Print the usage summary and exit. |
 
-There is no stdin mode and `-` is not special, but `/dev/stdin` works as a path
-— with the caveat that config discovery then walks up from `/dev`, not your
-repo, so pair it with `--config`.
+A single `-` reads stdin and writes the result to stdout, which is what an
+editor's format-on-save runs through a generic external-formatter setting:
+
+```sh
+cat query.sql | sqlalign -
+sqlalign - --dialect tsql < query.sql
+```
+
+`--check` and `--diff` still report rather than write when the input is `-`,
+so `sqlalign --check -` is a gate on piped SQL. `-` cannot be combined with
+file arguments: stdin is read once, so that has no sensible reading.
 
 ## Output mode
 
@@ -128,7 +136,7 @@ file itself is read.
 | `--width WIDTH` | `100` | Target line width for wrapping decisions. Not a hard cap: a construct anchored deep in an indent gets a floor of `anchor + 60`, plus 5 characters of grace, so alignment is never sacrificed to shave two columns. |
 | `--blank-lines-between-statements N` | unset | Force N blank lines between every pair of statements. Unset is the house rule: exactly one blank line between two **multi-line** statements and none otherwise, so a run of one-line `GRANT`s stays a block. `0` removes them all. |
 | `--no-align` | off *(aligned)* | Emit one space between tokens instead of padding them into columns. Same line structure, no padding — this is what 9 of 10 published SQL style guides call for. |
-| `--align-targets a,b,…` | all six | Comma-separated alignment columns to keep. Anything left out collapses to a single space. See the table below. |
+| `--align-targets a,b,…` | all but `table_names` | Comma-separated alignment columns to keep. Anything left out collapses to a single space. See the table below. |
 | `--comma-position {leading,trailing}` | `leading` *(house)* | Where the separator comma sits in a stacked list — select items, `GROUP BY`/`ORDER BY` terms, `INSERT` columns, `UPDATE SET` assignments, `CREATE TABLE` columns, window terms. |
 | `--boolean-operator-position {leading,trailing}` | `leading` *(house)* | Where `AND`/`OR` sit when a predicate spans lines. The condition column is identical either way — only the operator moves. |
 | `--on-placement {inline,own_line}` | `inline` *(house)* | Whether a `JOIN`'s `ON` rides the table line or drops below it. **`own_line` retires the FROM-block-wide `ON` column** — there is no longer an `ON` after each alias to align — so `join_conditions` has nothing to act on. |
@@ -164,22 +172,26 @@ sqlalign indents a CTE body 2.
 | `case_results` | `THEN` in a short-form `CASE` |
 | `column_types` | column types in `CREATE TABLE` |
 | `column_constraints` | `NOT NULL`/`DEFAULT`, and Redshift `ENCODE` |
+| `column_aliases` | the alias column alone, inside a select list |
+| `table_aliases` | the alias column alone, across a `FROM`/`JOIN` block |
+| `table_names` | table names padded to a shared column — opt-in, not in the default set |
 
 An unknown name is an error, not a silent no-op:
 
 ```
-sqlalign: unknown align_targets ['alias']; valid: ['aliases', 'case_results', 'column_constraints', 'column_types', 'join_conditions', 'operators']
+sqlalign: unknown align_targets ['alias']; valid: ['aliases', 'case_results', 'column_aliases', 'column_constraints', 'column_types', 'join_conditions', 'operators', 'table_aliases', 'table_names']
 ```
 
-`--no-align` is the shorthand for switching all six off.
+`--no-align` is the shorthand for switching every target off.
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
 | `0` | Success, including `--check`/`--diff` finding nothing to change, and including statements that passed through untouched with a warning. |
-| `1` | `--check` or `--diff` found at least one file that would change. No other mode returns `1`. |
+| `1` | Something a gate should fail on: `--check` or `--diff` found a file that would change, `--max-declines` was exceeded, or `--lint` reported findings. |
 | `2` | Unreadable file, invalid config file, invalid argument, or an unexpected engine error on one file. |
+| `141` | The reader closed the pipe (`sqlalign - \| head`). The shell's spelling of death-by-SIGPIPE; not an error. |
 
 Per-file failures do not abort the run: the file is reported on stderr and
 skipped, the rest still process, and the worst code seen is returned.

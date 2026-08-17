@@ -1,9 +1,9 @@
 [project]
 name = "sqlalign"
-version = "1.0.2"
+version = "1.1.0"
 description = "A SQL formatter that cannot change what your SQL means"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Pavan Amin" }]
@@ -13,6 +13,8 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: SQL",
@@ -22,12 +24,22 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# sqlglot is pinned to the 30.14.x line: the layout and safety engine depends on
-# exact AST shapes (cast discriminators, TimeUnit unit-casing, dollar-quote
-# Heredoc bodies) verified against 30.14.0. sqlglot changes these across minors,
-# so a wider range would risk silent mis-layout. Bump deliberately, re-running
-# the full golden suite, never as a passive float.
-dependencies = ["sqlglot>=30.14,<30.15"]
+# The layout and safety engine reads exact sqlglot AST shapes -- cast
+# discriminators, TimeUnit unit-casing, dollar-quote Heredoc bodies, and the
+# quoting on identifiers. sqlglot moves these between releases, and the safety
+# net cannot catch it: `ast_equal` compares output to input under the SAME
+# sqlglot, so an upstream change moves both sides together.
+#
+# The range is 30.x rather than a single patch line because
+# `tests/test_sqlglot_conformance.py` asserts each of those shapes by name, and
+# CI runs the whole suite against the newest release the range allows as well as
+# the locked one. Widen past 31 only with that suite green on the new major.
+dependencies = [
+    "sqlglot>=30.14,<31",
+    # tomllib is stdlib from 3.11. tomli is the same API, and the marker keeps it
+    # off every install that does not need it.
+    "tomli>=2; python_version<'3.11'",
+]
 
 # sqlfluff is optional and imported only by --lint. sqlalign's own guarantee
 # does not depend on a linter, so neither should its install.
@@ -41,7 +53,7 @@ Source = "https://github.com/pua2/sqlalign"
 Issues = "https://github.com/pua2/sqlalign/issues"
 
 [project.scripts]
-sqlalign = "sqlalign.cli:main"
+sqlalign = "sqlalign.cli:console"
 
 [dependency-groups]
 dev = [
@@ -57,13 +69,29 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# The sdist is an allowlist, not the working tree minus .gitignore. Hatchling's
+# default reads only .gitignore -- not .git/info/exclude -- so anything ignored
+# there, and any tracked-but-internal directory, ships in a build made from a
+# working tree that carries one. Naming what goes IN cannot leak what happens
+# to be lying around.
+[tool.hatch.build.targets.sdist]
+include = [
+    # Anchored with a leading slash: an unanchored pattern matches at any
+    # depth, which is how a root README pattern once dragged a sibling
+    # directory's README back in.
+    "/src", "/tests", "/tools", "/scripts", "/samples", "/.github",
+    "/docs/guide", "/docs/v1", "/docs/index.html",
+    "/README.md", "/CHANGELOG.md", "/CONTRIBUTING.md", "/LICENSE",
+    "/.sqlfluff", "/.pre-commit-hooks.yaml", "/action.yml", "/uv.lock",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py310"   # must track requires-python, or pyupgrade emits newer syntax
 
 [tool.ruff.lint]
 # E,F  pyflakes + pycodestyle errors   I  import order      UP  pyupgrade

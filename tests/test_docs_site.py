@@ -160,6 +160,10 @@ def test_the_committed_site_matches_the_generator():
         shutil.copytree(ROOT / "docs" / "guide", scratch / "docs" / "guide")
         shutil.copytree(ROOT / "tools", scratch / "tools")
         (scratch / "src").symlink_to(ROOT / "src")
+        # The generator reads the version from here rather than from installed
+        # metadata, so that the committed site does not depend on which version
+        # happens to be installed in whatever environment runs the build.
+        shutil.copy(ROOT / "pyproject.toml", scratch / "pyproject.toml")
         proc = subprocess.run(
             [sys.executable, str(scratch / "tools" / "build_docs.py")],
             capture_output=True, text=True, cwd=scratch)
@@ -240,3 +244,34 @@ def test_every_flag_has_help_text():
     bare = [action.option_strings[0] for action in build_parser()._actions
             if action.option_strings and not action.help]
     assert not bare, f"flags with no help text: {bare}"
+
+
+def test_the_version_selector_names_the_version_being_shipped():
+    """The one control whose whole job is telling a reader which version they are
+    looking at. It said "1.0 (current)" through the whole of 1.1's development,
+    because it was typed rather than derived."""
+    import tomllib
+
+    shipping = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    series = ".".join(shipping.split(".")[:2])
+    assert f"{series} (current)" in (SITE / "index.html").read_text()
+
+
+def test_the_site_does_not_depend_on_what_is_installed():
+    """The site is generated and committed, so the build has to be reproducible
+    from the repository alone. Reading the version through installed-distribution
+    metadata made the output depend on the environment, which turned the
+    staleness test above into a coin flip."""
+    import ast
+
+    tree = ast.parse((ROOT / "tools" / "build_docs.py").read_text())
+    # Parsed rather than grepped: the docstring explaining this rule mentions the
+    # very names it forbids, and a substring search cannot tell code from prose.
+    imports = {alias.name for node in ast.walk(tree)
+               if isinstance(node, ast.Import) for alias in node.names}
+    imports |= {node.module for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom) and node.module}
+    assert not any(name.startswith("importlib") for name in imports), imports
+
+    reads = {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+    assert "__version__" not in reads

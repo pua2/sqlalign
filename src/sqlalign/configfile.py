@@ -17,11 +17,14 @@ not have, and would only discover it from a surprising diff. `--no-strict-config
 downgrades that to a warning for the case where a config is shared with a newer
 sqlalign that knows keys this one does not.
 """
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:            # Python 3.10
+    import tomli as tomllib
 from pathlib import Path
 
 from sqlalign.config import Width
-from sqlalign.style import PRESETS, Style
+from sqlalign.style import PRESETS, SETTING_SUMMARIES, Style
 
 FILENAME = ".sqlalign.toml"
 PYPROJECT = "pyproject.toml"
@@ -160,6 +163,57 @@ def resolve(path: Path, overrides: dict | None = None, *,
         return build_style({}, overrides), None, []
     settings, warnings = load_settings(config_path, strict=strict)
     return build_style(settings, overrides), config_path, warnings
+
+
+def starter(style: Style, preset: str | None = None) -> str:
+    """A commented `.sqlalign.toml` for a project that has none.
+
+    Every setting is emitted COMMENTED OUT, showing the value currently in
+    effect. The file therefore changes nothing until something is uncommented,
+    which is the property that makes it safe to write into a repository: a
+    starter that pinned eighteen settings would freeze a team on today's
+    defaults and call it a choice.
+
+    A `--preset` is the exception and is written live, because choosing one is
+    the decision the reader just made. The settings below it then show what that
+    preset does, so the file doubles as the answer to "what did I just pick".
+
+    Values come from `describe`, so what a starter shows and what
+    `--show-config` reports cannot drift apart.
+    """
+    rendered = {}
+    for line in describe(style).splitlines():
+        if line.startswith("#") or " = " not in line:
+            continue
+        rendered[line.split(" = ", 1)[0]] = line
+
+    out = [
+        "# sqlalign configuration.",
+        "#",
+        "# Written by `sqlalign --init`. Every setting is commented out and shows the",
+        "# value currently in effect, so this file changes nothing until you uncomment",
+        "# something.",
+        "#",
+        "# Reference: https://sqlalign.lumaru.app/v1/settings.html",
+        "",
+    ]
+    if preset:
+        out += [
+            '# The base every setting below starts from. Flags and any setting you',
+            '# uncomment layer on top of it.',
+            f'preset = "{preset}"',
+            "",
+        ]
+    for name, summary in SETTING_SUMMARIES.items():
+        line = rendered.get(name)
+        out.append(f"# {summary}")
+        if line is None:
+            # `blank_lines_between_statements` has no TOML spelling when unset.
+            out.append(f"# {name} =")
+        else:
+            out.append(f"# {line}")
+        out.append("")
+    return "\n".join(out).rstrip() + "\n"
 
 
 def describe(style: Style) -> str:

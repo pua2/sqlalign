@@ -163,3 +163,31 @@ def test_composes_with_other_knobs():
     style = Style(keyword_case="lower", comma_position="trailing", align=False)
     out = format_sql("select a, bb from t where x = 1 and y = 2;", "postgres", style).text
     assert out == "select a,\n       bb\nfrom t\nwhere x = 1\n  and y = 2;"
+
+
+# ---- quoted identifiers must not immunise the keyword they are spelled as ----
+
+@pytest.mark.parametrize("sql,keyword", [
+    ('SELECT a AS "FROM", b FROM t WHERE b = 1;', "from"),
+    ('SELECT a FROM "ORDER" ORDER BY a;', "order"),
+    ('SELECT COUNT(*) AS "COUNT" FROM t;', "count"),
+])
+def test_a_quoted_identifier_does_not_protect_the_bare_keyword(sql, keyword):
+    """`identifier_names` fed quoted names into the protection set, but a quoted
+    identifier renders inside quotes, which the casing scanner never enters --
+    so the entry protected nothing except every KEYWORD spelled the same way.
+    `SELECT a AS "FROM"` left the real FROM upper in an otherwise lowercase
+    file, reachable through the shipped `dbt` preset."""
+    result = format_sql(sql, "postgres", LOWER)
+    assert not result.declines, result.declines
+    outside_quotes = re.sub(r'"[^"]*"', "", result.text)
+    assert keyword.upper() not in outside_quotes.split(), result.text
+    assert f'"{keyword.upper()}"' in result.text, "the quoted identifier itself moved"
+
+
+def test_an_unquoted_keyword_named_column_is_still_protected():
+    """The reason the protection set exists at all: a bare column named like a
+    non-reserved keyword must keep the author's spelling."""
+    result = format_sql("SELECT filter FROM t;", "postgres", LOWER)
+    assert not result.declines
+    assert "filter" in result.text

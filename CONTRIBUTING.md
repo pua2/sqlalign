@@ -6,14 +6,22 @@ are not obvious from the code, and that will otherwise cost you an afternoon.
 ## Setup
 
 ```sh
-uv sync                 # Python 3.12+
-uv run pytest -q        # ~3,300 tests, about 40 seconds
+uv sync                 # Python 3.10+
+uv run pytest -q        # ~4,000 tests, about a minute
 uv run ruff check .
 ```
 
-Both must be clean before a pull request. CI runs the same two checks on
-Python 3.12 and 3.13, plus the goldens, the docs site and the oldest
-supported sqlfluff, each as its own job so a red build says why.
+Both must be clean before a pull request. CI runs the same two checks on Python
+3.10 through 3.13, and then five more jobs, each separate so a red build says
+which thing broke:
+
+| Job | What it protects |
+|---|---|
+| `goldens` | the style, byte for byte — this is what makes the stability policy true |
+| `docs` | the committed site still matches its generator |
+| `action` | `action.yml` is a published interface; nothing else runs it |
+| `sqlfluff-floor` | the oldest sqlfluff the `lint` extra allows |
+| `sqlglot-newest` | the newest sqlglot the range allows, which the lockfile never covers |
 
 ## The goldens are the specification
 

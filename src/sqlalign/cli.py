@@ -5,6 +5,7 @@ import os
 import shutil
 import sys
 import tempfile
+import urllib.parse
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from sqlalign import configfile
 from sqlalign.formatter import format_sql
 from sqlalign.lint import LintUnavailable, lint, version_warning
 from sqlalign.sqlfluffconfig import sqlfluff_config
-from sqlalign.style import PRESETS, SUPPORTED_DIALECTS, Style
+from sqlalign.style import ALL_ALIGN_TARGETS, PRESETS, SUPPORTED_DIALECTS, Style
 
 
 def _write_atomically(path: Path, text: str) -> None:
@@ -109,7 +110,58 @@ def _report(seen: int, declined: int, causes: dict[tuple[str, str], int]) -> str
         width = max(len(kind) for kind, _ in causes)
         for (kind, reason), count in sorted(causes.items(), key=lambda kv: (-kv[1], kv[0])):
             lines.append(f"    {count:>4}  {kind:<{width}}  {reason}")
+    ask = _ask_for_construct(causes)
+    if ask:
+        lines += ["", ask]
     return "\n".join(lines)
+
+
+def _issue_url() -> str | None:
+    """Where to report a missing construct, from the package metadata.
+
+    Read rather than written here, so the address exists in exactly one place --
+    pyproject, which is also what PyPI shows.
+    """
+    from importlib.metadata import PackageNotFoundError, metadata
+    try:
+        entries = metadata("sqlalign").get_all("Project-URL") or []
+    except PackageNotFoundError:            # a source tree that was never installed
+        return None
+    for entry in entries:
+        label, _, url = entry.partition(", ")
+        if label.strip().lower() == "issues":
+            return url.strip()
+    return None
+
+
+def _ask_for_construct(causes: dict[tuple[str, str], int]) -> str | None:
+    """An invitation to ask for the construct that declined most often.
+
+    A decline is a gap measured on the team's own SQL rather than guessed at,
+    which makes it the most useful thing a user could tell this project. Left as
+    a count it is a dead end; with somewhere to send it, the report becomes a
+    demand-ranked backlog.
+
+    Only `unsupported`, and only the top one. A parse error or an upstream
+    round-trip failure is not sqlalign's to implement, and a URL per cause would
+    turn a summary into a wall of links.
+    """
+    unsupported = {reason: count for (kind, reason), count in causes.items()
+                   if kind == "unsupported"}
+    if not unsupported:
+        return None
+    base = _issue_url()
+    if base is None:
+        return None
+    top = max(unsupported.items(), key=lambda kv: (kv[1], kv[0]))[0]
+    # A reason reads "PIVOT: this dialect has no such syntax". The construct is
+    # the part before the colon; the rest is the explanation, and splicing it
+    # into a sentence or an issue title reads like a machine wrote it.
+    construct = top.split(":", 1)[0].strip()
+    query = urllib.parse.urlencode({"title": f"Support {construct}",
+                                    "labels": "construct"})
+    return (f"  {construct} is the construct declining most often here. If it "
+            f"matters to you, ask for it:\n    {base}/new?{query}")
 
 
 def _version() -> str:
@@ -154,6 +206,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="ignore any config file and use the built-in defaults")
     p.add_argument("--show-config", action="store_true",
                    help="print the effective settings as TOML and exit")
+    p.add_argument("--init", action="store_true",
+                   help="write a commented .sqlalign.toml in the current directory "
+                        "and exit; every setting is commented out, so the file "
+                        "changes nothing until you edit it")
     p.add_argument("--gui", action="store_true",
                    help="(experimental) open the settings panel with a live preview, and exit")
     p.add_argument("--report", action="store_true",
@@ -193,11 +249,12 @@ def build_parser() -> argparse.ArgumentParser:
                    dest="format_dollar_bodies",
                    help="leave dollar-quoted ($$) procedure and function bodies untouched")
     p.add_argument("--align-targets",
+                   # The valid list is derived, not typed: the typed version had
+                   # drifted to seven names while the set held nine.
                    help="comma-separated alignment targets to keep. Default is every "
                         "target except table_names, which is opt-in because it pads "
                         "the FROM/JOIN keyword out to a shared table column. "
-                        "Valid: aliases, table_names, operators, join_conditions, "
-                        "case_results, column_types, column_constraints")
+                        f"Valid: {', '.join(sorted(ALL_ALIGN_TARGETS))}")
     p.add_argument("--comma-position", choices=["leading", "trailing"],
                    help="where the separator comma sits in a stacked list (default: leading)")
     p.add_argument("--boolean-operator-position", choices=["leading", "trailing"],
@@ -263,12 +320,40 @@ def main(argv: list[str] | None = None) -> int:
             print(f"sqlalign: {w}", file=sys.stderr)
         return style
 
+    if args.init:
+        # Refuses to overwrite: a config is a decision a team already made, and
+        # a starter is only ever the first one.
+        target = Path(".sqlalign.toml")
+        if target.exists():
+            print(f"sqlalign: {target} already exists — nothing written",
+                  file=sys.stderr)
+            return 2
+        try:
+            starter = configfile.starter(style_for(Path(".")), args.preset)
+        except configfile.ConfigError as e:
+            # The starter shows the settings currently in effect, so it resolves
+            # config like any other mode -- and fails like one: message, exit 2.
+            print(f"sqlalign: {e}", file=sys.stderr)
+            return 2
+        try:
+            target.write_text(starter)
+        except OSError as e:
+            print(f"sqlalign: {e}", file=sys.stderr)
+            return 2
+        print(f"wrote {target}")
+        return 0
+
     if args.gui:
         from sqlalign.gui import run
         return run(args.dialect)
 
-    if not args.files and not (args.print_sqlfluff_config or args.gui):
+    if not args.files and not (args.print_sqlfluff_config or args.gui or args.init):
         p.error("the following arguments are required: files")
+
+    # stdin is read once, so `-` alongside paths has no sensible reading: it
+    # would either format one input twice or silently drop the others.
+    if "-" in args.files and len(args.files) > 1:
+        p.error("`-` reads stdin and cannot be combined with file arguments")
 
     if args.print_sqlfluff_config:
         # Resolved against the first file like --show-config, so the generated
@@ -319,10 +404,16 @@ def main(argv: list[str] | None = None) -> int:
     for path in targets:
         name = str(path)
         try:
-            # newline="" disables universal-newline translation so CRLF/CR bytes
-            # survive into `original` and can be detected below (v1 is LF-only).
-            with path.open(newline="") as f:
-                original = f.read()
+            if name == "-":
+                # Read the raw buffer rather than sys.stdin, whose universal
+                # newline translation would rewrite CRLF before the code below
+                # gets to notice it.
+                original = sys.stdin.buffer.read().decode()
+            else:
+                # newline="" disables universal-newline translation so CRLF/CR bytes
+                # survive into `original` and can be detected below (v1 is LF-only).
+                with path.open(newline="") as f:
+                    original = f.read()
         except OSError as e:
             print(f"sqlalign: {e}", file=sys.stderr)
             rc = 2
@@ -350,7 +441,10 @@ def main(argv: list[str] | None = None) -> int:
         if "\r" in normalized:
             print(f"sqlalign: {name}: lone CR line endings — passed through untouched",
                   file=sys.stderr)
-            if args.stdout:
+            # `-` has no file for the caller to fall back to: an editor filter
+            # replaces the buffer with whatever comes out, so passing through
+            # must mean echoing the input, never emitting nothing.
+            if args.stdout or name == "-":
                 sys.stdout.write(original)
             continue
         try:
@@ -370,13 +464,12 @@ def main(argv: list[str] | None = None) -> int:
         # diff on every line) instead of differing purely by "\r".
         target_ending = source_ending if args.line_ending == "auto" else args.line_ending
         formatted = result.text.replace("\n", "\r\n") if target_ending == "crlf" else result.text
-        if args.stdout:
-            sys.stdout.write(formatted)
-        elif args.check or args.diff:
+        if args.check or args.diff:
             # Both write nothing and report through the exit code; they differ in
             # what they print. --check names the files that would change (enough
             # for CI to be actionable without burying the log in diffs); --diff
-            # shows the change itself.
+            # shows the change itself. For `-` the name printed is `-`, which is
+            # what the reader passed.
             if formatted != original:
                 if args.diff:
                     sys.stdout.writelines(difflib.unified_diff(
@@ -386,6 +479,10 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     print(f"would reformat {name}")
                 rc = max(rc, 1)
+        # `-` has no file to rewrite, so the formatted text IS the output. Ordered
+        # after --check/--diff so those still report on stdin rather than writing.
+        elif args.stdout or name == "-":
+            sys.stdout.write(formatted)
         elif formatted != original:
             try:
                 _write_atomically(path, formatted)
@@ -414,5 +511,31 @@ def main(argv: list[str] | None = None) -> int:
     return rc
 
 
+def console() -> int:
+    """The installed command. `main` stays exception-transparent for callers
+    that embed it; this wrapper owns the one failure that belongs to being a
+    process in a pipeline.
+
+    `sqlalign - | head -3` closes stdout after three lines. Dying quietly is
+    the pipeline contract -- every coreutils tool does -- and 141 is how a
+    shell spells death-by-SIGPIPE, so scripts that check for it keep working.
+    stdout is detached first, or the interpreter's exit flush raises the same
+    error a second time as an ignored-exception message on stderr.
+    """
+    import os
+
+    try:
+        return main()
+    except BrokenPipeError:
+        # Best-effort: under a captured stdout (tests, some embedders) there is
+        # no file descriptor to detach, and nothing to protect either.
+        try:
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+        except (OSError, ValueError):
+            pass
+        return 141
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(console())

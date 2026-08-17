@@ -27,6 +27,7 @@ from sqlalign.gui import (
     SAMPLES,
     as_toml,
     default_settings,
+    disabled_reason,
     preview,
     settings_from,
     style_from,
@@ -211,10 +212,21 @@ def test_the_sample_formats_under_every_preset(preset):
 # ---- config round-trip ---------------------------------------------------
 
 def test_saved_config_is_what_show_config_prints():
-    """The GUI must not grow its own config dialect."""
+    """The GUI must not grow its own config dialect.
+
+    Compared with the header stripped rather than as whole strings: the file
+    carries a comment block saying where it came from, and asserting on the
+    settings alone is the actual invariant. Stripping comments also proves the
+    header cannot smuggle a setting past this test.
+    """
     from sqlalign.configfile import describe
+
     values = settings_from(preset_style("gitlab"))
-    assert as_toml(values) == describe(preset_style("gitlab")) + "\n"
+    written = [line for line in as_toml(values).splitlines()
+               if line.strip() and not line.startswith("#")]
+    expected = [line for line in describe(preset_style("gitlab")).splitlines()
+                if line.strip() and not line.startswith("#")]
+    assert written == expected
 
 
 def test_saved_config_loads_back_into_the_same_style(tmp_path):
@@ -1227,3 +1239,94 @@ def test_the_guide_does_not_claim_more_knobs_than_exist():
     assert claimed.group(1) == expected, (
         f"the guide says {claimed.group(1).lower()} knobs; Style has "
         f"{len(dataclasses.fields(Style))}")
+
+
+# ---- why a control is greyed out -------------------------------------------
+#
+# A greyed control with no explanation reads as a bug in the panel. The setting
+# is real and will do something -- just not until the control it depends on says
+# so, which is a sentence the panel can say.
+
+@pytest.mark.parametrize("name,off,expected", [
+    ("align_targets", {"align": False}, "needs align = true"),
+    ("select_indent", {"select_placement": "inline"}, "needs select_placement = own_line"),
+    ("river_gutter", {"clause_keyword_align": "left"}, "needs clause_keyword_align = river"),
+])
+def test_a_greyed_control_says_why(name, off, expected):
+    values = dict(default_settings(), **off)
+    assert disabled_reason(name, values) == expected
+
+
+@pytest.mark.parametrize("name,on", [
+    ("align_targets", {"align": True}),
+    ("select_indent", {"select_placement": "own_line"}),
+    ("river_gutter", {"clause_keyword_align": "river"}),
+])
+def test_no_reason_is_given_when_the_control_is_live(name, on):
+    """Two of these are greyed out under the HOUSE defaults, which is correct --
+    the defaults put the select list inline and the keywords left. The dependency
+    has to be satisfied explicitly."""
+    assert disabled_reason(name, dict(default_settings(), **on)) is None
+
+
+def test_a_control_with_no_dependency_never_has_a_reason():
+    assert disabled_reason("keyword_case", default_settings()) is None
+
+
+def test_an_unknown_control_has_no_reason():
+    assert disabled_reason("no_such_setting", default_settings()) is None
+
+
+def test_every_dependent_control_can_produce_a_reason():
+    """Whatever `needs` a control declares, the panel must be able to explain it.
+    A new dependency added without a spelling would grey a control silently."""
+    from sqlalign.gui import CONTROLS
+
+    for control in CONTROLS:
+        need = control.get("needs")
+        if need is None:
+            continue
+        depends_on, wanted = need
+        unmet = "__not_this__" if not isinstance(wanted, bool) else not wanted
+        reason = disabled_reason(control["name"], dict(default_settings(),
+                                                       **{depends_on: unmet}))
+        assert reason and depends_on in reason, control["name"]
+
+
+# ---- the header on a saved config ------------------------------------------
+
+def test_the_saved_config_says_where_it_came_from():
+    """It lands in a repository where the next person to open it chose none of
+    it, and an unexplained file of eighteen settings invites deletion."""
+    text = as_toml(default_settings())
+    assert "settings panel" in text
+    assert "sqlalign --init" in text, "the alternative is worth naming"
+
+
+def test_the_saved_config_names_the_preset_when_there_is_one():
+    assert "`gitlab` preset" in as_toml(settings_from(preset_style("gitlab")))
+
+
+def test_a_customised_config_claims_no_preset():
+    """Width is the case that matters: `preset_named` compares formatted output
+    of one short sample, which a changed width does not alter, so it would still
+    have called this the gitlab preset. The header uses an exact comparison."""
+    values = dict(settings_from(preset_style("gitlab")), width=71)
+    assert "preset's values" not in as_toml(values)
+
+
+def test_the_dialect_is_recorded_as_a_comment_not_a_setting():
+    """`dialect` is CLI-only and has no config key: writing it as a setting
+    would produce a file that fails to load."""
+    import tomllib
+
+    text = as_toml(default_settings(), dialect="tsql")
+    assert "--dialect tsql" in text
+    assert "dialect" not in tomllib.loads(text)
+
+
+@pytest.mark.parametrize("preset", ["house", "compact", "dbt", "gitlab", "river", "trailing"])
+def test_every_saved_config_parses(preset):
+    import tomllib
+
+    tomllib.loads(as_toml(settings_from(preset_style(preset)), dialect="postgres"))

@@ -116,7 +116,7 @@ error (see [Unknown keys](#unknown-keys-are-an-error)).
 | `preset` | `"house"` \| `"compact"` \| `"trailing"` \| `"dbt"` | none | Named starting point. Every other key layers on top of it. |
 | `width` | integer | `100` | Target line width for wrapping decisions. A target, not a hard cap — see below. |
 | `align` | boolean | `true` | Master alignment switch. `false` emits one space between tokens and keeps the same line structure. |
-| `align_targets` | list of strings | all six | Which alignment columns are padded: `aliases`, `operators`, `join_conditions`, `case_results`, `column_types`, `column_constraints`. Anything omitted collapses to a single space. |
+| `align_targets` | list of strings | all but `table_names` | Which alignment columns are padded — the nine names in the [CLI reference's target table](cli.md#alignment-targets). Anything omitted collapses to a single space. |
 | `comma_position` | `"leading"` \| `"trailing"` | `"leading"` | Where the separator comma sits in a stacked list. |
 | `boolean_operator_position` | `"leading"` \| `"trailing"` | `"leading"` | Where `AND`/`OR` sit when a predicate spans lines. |
 | `on_placement` | `"inline"` \| `"own_line"` | `"inline"` | Whether a JOIN's `ON` rides the table line or drops below it. |
@@ -318,8 +318,8 @@ exits `2` without touching a file:
 |---|---|
 | `comma_position = "sideways"` | `comma_position must be 'leading' or 'trailing', got 'sideways'` |
 | `width = "wide"` | `width must be an integer, got 'wide'` |
-| `align_targets = ["aliases", "typo"]` | `unknown align_targets ['typo']; valid: ['aliases', 'case_results', 'column_constraints', 'column_types', 'join_conditions', 'operators']` |
-| `preset = "nice"` | `unknown preset 'nice'; valid: ['compact', 'dbt', 'house', 'trailing']` |
+| `align_targets = ["aliases", "typo"]` | `unknown align_targets ['typo']; valid: ['aliases', 'case_results', 'column_aliases', 'column_constraints', 'column_types', 'join_conditions', 'operators', 'table_aliases', 'table_names']` |
+| `preset = "nice"` | `unknown preset 'nice'; valid: ['compact', 'dbt', 'gitlab', 'house', 'river', 'trailing']` |
 | malformed TOML | `invalid TOML: ...` |
 
 ### `--no-strict-config`

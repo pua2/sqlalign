@@ -93,7 +93,12 @@ def test_report_ranks_the_causes(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "declined by cause" in out
     body = out[out.index("declined by cause"):]
-    counts = [int(line.split()[0]) for line in body.split("\n")[1:] if line.strip()]
+    # Only the table rows, which are `<count>  <kind>  <reason>`. The report can
+    # carry prose after the table -- the invitation to ask for the top declining
+    # construct -- and reading that as a count is a parsing accident, not a check.
+    counts = [int(line.split()[0]) for line in body.split("\n")[1:]
+              if line.strip() and line.split()[0].isdigit()]
+    assert counts, body
     assert counts == sorted(counts, reverse=True), body
 
 

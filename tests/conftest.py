@@ -1,4 +1,16 @@
+import sys
 from pathlib import Path
+
+# tomllib is stdlib only from 3.11. Registering tomli under that name here --
+# conftest imports before any test module -- lets every test write a plain
+# `import tomllib` and still run on 3.10, instead of each module carrying its
+# own shim and the one that forgets breaking only on the 3.10 CI leg.
+try:
+    import tomllib
+except ModuleNotFoundError:            # Python 3.10
+    import tomli as tomllib
+sys.modules.setdefault("tomllib", tomllib)
+
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SAMPLES = sorted(p.stem for p in (FIXTURES / "expected").glob("*.sql"))

@@ -223,7 +223,7 @@ neutralises differences that cannot carry meaning:
 
 | Normalisation | Why |
 |---|---|
-| `comments = None` on every node | a comment cannot change meaning |
+| `comments = None` on every node | comments are not in the tree to begin with; they are compared separately, see `comments_equal` |
 | `LANGUAGE plpgsql` vs `LANGUAGE 'plpgsql'` | optional legacy quoting; parses to `Var` vs `Literal` |
 | casefold `WindowSpec.kind` / `start_side` / `end_side`, `TruncateTable.identity` / `option` | plain strings holding source-cased *keywords* |
 | casefold `DistStyleProperty`'s `Var` | a closed keyword set (`KEY`/`EVEN`/`ALL`/`AUTO`), not user data |
@@ -267,15 +267,30 @@ never leaves sqlglot's more permissive grammar. `format_sql` therefore raises a
 and extending the list means auditing every keyword the handlers emit — two of
 them diverge for T-SQL — not just registering a parser.
 
-**2. Comments are excluded from `ast_equal`.** Stripping them is correct for
-semantics and unavoidable in practice, but it means a dropped, restyled
-(`--` → `/* */`), or relocated comment is **silent** as far as the safety net is
-concerned. The byte-exact golden fixtures are the only guard on comment handling.
-That is precisely why `layout/comments.py` recovers each comment's original style
-and text from the raw source and re-attaches it by authorial position, and why it
-raises `Unsupported` for any comment position it does not model instead of
-emitting a best-effort guess. "Reproduce faithfully or decline" is the contract;
-"try our best" would be unverifiable.
+**2. `ast_equal` cannot see comments, so a second check does.** sqlglot hangs a
+comment off the token it precedes rather than putting it in the tree, which means
+`ast_equal("SELECT a -- keep me", "SELECT a")` is True: a statement and the same
+statement with its comment deleted compare equal.
+
+Until 1.1 the byte-exact goldens were the only guard on that, and they only cover
+SQL somebody thought to write down. Two of the worst bugs in the project's history
+lived in the gap and were semantic, not cosmetic: `SELECT a -- c,` lost a
+separator, and `SELECT a -- note;` left the statement unterminated so it swallowed
+the next one. Both were found by the preset matrix, which is luck rather than a
+guarantee.
+
+`comments_equal` now compares the comments each statement carries, by text and in
+order, and a statement whose comments would differ is passed through like any
+other. Position is deliberately not compared: the layout MOVES a comment to the
+end of the row above, so where it sits is expected to change and what it says is
+not. A `$$` body is one string literal to the tokenizer, so comments inside one
+remain outside this check; those statements are compared structurally instead.
+
+None of which replaces `layout/comments.py` recovering each comment's original
+style and text from the raw source and re-attaching it by authorial position, or
+its raising `Unsupported` for any position it does not model. "Reproduce
+faithfully or decline" is still the contract; the check is what makes it
+enforceable rather than aspirational.
 
 **3. Some distinctions are destroyed before the comparison exists.** When
 sqlglot's parser collapses two spellings into one node, both sides of the
@@ -324,9 +339,9 @@ Otherwise declining is per statement, not per file:
 
 ```console
 $ sqlalign --stdout mixed.sql
-sqlalign: mixed.sql: unsupported construct, passed through: -- a decline next to a formatted stateme
+sqlalign: mixed.sql: unsupported construct (CTE column list), passed through: -- a decline next to a formatted stateme
 -- a decline next to a formatted statement
-select distinct on (a) a, b from t;
+with c(a, b) as (select 1, 2) select a from c;
 SELECT x
      , y
 FROM z

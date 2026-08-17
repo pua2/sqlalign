@@ -1,5 +1,87 @@
 # Changelog
 
+## 1.1.0
+
+### The guarantee now covers comments
+
+Every statement was already re-parsed and compared as a syntax tree. Comments are
+not in that tree — sqlglot hangs them off tokens — so the check passed whether or
+not a comment survived, and the two worst bugs in this project's history lived in
+that gap and were semantic rather than cosmetic: `SELECT a -- c,` lost a
+separator, and `SELECT a -- note;` left the statement unterminated so it swallowed
+the next one.
+
+Each statement is now also compared on the comments it carries, and one that
+would differ is passed through byte-identical like any other. Text and order are
+compared, not position: the layout deliberately moves a comment to the end of the
+row above. Comments inside a `$$` body remain outside this check; those
+statements are compared structurally instead.
+
+### Running it where you already work
+
+- **pre-commit hooks and a GitHub Action.** `sqlalign` rewrites and fails so you
+  restage; `sqlalign-check` only reports. The action defaults to `--check`,
+  because an action that silently reformats a checkout is not what a gate is for.
+- **`sqlalign -`** reads stdin and writes stdout, which is what an editor's
+  format-on-save runs. `--check` and `--diff` still report rather than write.
+- **A Python API.** `sqlalign.format` returns the text; `sqlalign.format_result`
+  also returns what happened. Both exist because a statement sqlalign cannot
+  model comes back byte-identical rather than raising, so the simple function
+  cannot tell "formatted" from "left alone".
+- **`sqlalign --init`** writes a starter `.sqlalign.toml`, every setting
+  commented out. A starter that pinned eighteen settings would freeze you on the
+  day's defaults and call it a decision.
+
+### Wider support
+
+- **Python 3.10 and 3.11.** Nothing in the engine needed porting; `tomllib` gets
+  a shim below 3.11. CI runs all four versions, and a test compares the
+  classifiers, the `requires-python` floor and the CI matrix against each other.
+- **sqlglot `>=30.14,<31`** rather than a single patch line. The range is safe
+  because `tests/test_sqlglot_conformance.py` asserts each AST shape the layout
+  reads, and CI runs the whole suite against the newest release the range allows.
+  The safety net cannot catch an upstream shape change on its own: it compares
+  output to input under the same sqlglot, so both sides move together.
+
+### Fixed
+
+- **Comments inside a `$$` body were keyword-cased, with the terminator spliced
+  into the comment.** `-- log it for the user` shipped as
+  `-- LOG it FOR the user;` with no decline. A same-line trailing comment is now
+  reproduced verbatim; a comment position the body renderer does not model
+  declines instead of guessing — the same contract the SQL comment engine
+  follows, now held on both sides of the dollar quotes.
+- **`--report` and `--max-declines` were blind to templated files.** The
+  Jinja/dbt path dropped the statement and decline counts, so most of a dbt
+  project was invisible to the coverage gate.
+- **A quoted identifier immunised the keyword it was spelled as.**
+  `SELECT a AS "FROM"` under `keyword_case = "lower"` left the real `FROM`
+  upper in an otherwise lowercase file.
+- **`sqlalign - | head` dumped a traceback.** The command now exits `141`, the
+  shell's spelling of death-by-SIGPIPE.
+- `WITH "cte" AS (...)` declined. The CTE name printed from `.alias`, which
+  strips quoting, so the output named a different relation. Machine-generated SQL
+  quotes every identifier, so this affected a whole class of input.
+- `WHERE NOT b IS NULL` declined under Postgres. The renderer rewrote it to
+  `b IS NOT NULL` — the same meaning, but not what was written. Whether the two
+  spellings can be told apart is a property of the dialect, so it is now probed
+  rather than assumed.
+
+Both were found by a new corpus suite that runs the formatter over third-party
+SQL — sqlglot's own fixtures, dbt's example project, and a macro-heavy dbt
+package — vendored at pinned commits.
+
+### Also
+
+- `--report` names the construct declining most often and links a pre-filled
+  issue, so a coverage gap measured on your SQL has somewhere to go.
+- The settings panel says why a control is greyed out, and the config it writes
+  records where it came from.
+- A published benchmark (`tools/benchmark.py`): about 180 files/s, which is why
+  there is no `--jobs` flag.
+- The style stability policy is written down: no style change in a patch release,
+  enforced by byte-exact goldens in their own CI job.
+
 ## 1.0.2
 
 ### Fixed

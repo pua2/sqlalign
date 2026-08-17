@@ -20,7 +20,7 @@ from sqlglot import exp
 from sqlalign.casing import active_style
 from sqlalign.commas import COMMA_KIND
 from sqlalign.ir import Line, Seg
-from sqlalign.layout import Unsupported
+from sqlalign.layout import Unsupported, cte_name
 
 _BODY_ANCHOR = 2
 
@@ -41,7 +41,12 @@ def layout_with(node: exp.Expression, dialect: str, width) -> list[Line]:
         materialized = cte.args.get("materialized")
         hint = "" if materialized is None else (
             "MATERIALIZED " if materialized else "NOT MATERIALIZED ")
-        body = f"{cte.alias} AS {hint}("
+        # `.alias` returns the identifier's NAME, unquoted, so `WITH "cte" AS`
+        # came out as bare `WITH cte AS` -- a different relation in Postgres, and
+        # a syntax error whenever the name needs quoting at all. The re-parse
+        # guard caught it and passed the statement through, which is the silent
+        # decline `column_alias` and `table_alias` document one node type over.
+        body = f"{cte_name(cte, dialect)} AS {hint}("
         # This site applies comma position itself rather than going through
         # commas.py's generic pass (like window.py). That pass blanks the comma
         # while KEEPING its width, which is right where the comma head is as wide
