@@ -56,13 +56,15 @@ def layout_statement(node: exp.Expression, dialect: str, width, anchor: int = 0)
 
     if node.args.get("with_") is not None:
         return _cte.layout_with(node, dialect, width)
-    if isinstance(node, (exp.Create, exp.TruncateTable, exp.Grant, exp.Alter,
-                         exp.Drop, exp.Comment, exp.Declare, exp.Copy)):
+    if isinstance(node, (exp.Create, exp.TruncateTable, exp.Grant, exp.Revoke,
+                         exp.Alter, exp.Drop, exp.Comment, exp.Declare, exp.Copy)):
         return _ddl.ddl_lines(node, dialect, width, anchor)
     # A GRANT sqlglot could only parse as an unsupported-syntax Command
     # (e.g. GRANT ... ON ALL TABLES IN SCHEMA ...) still gets keyword casing.
     if isinstance(node, exp.Command) and str(node.this).upper() == "GRANT":
         return _ddl.ddl_lines(node, dialect, width, anchor)
+    if isinstance(node, exp.Set):
+        return _source_lines(node, dialect, anchor)
     if isinstance(node, exp.Values):
         return _dml.values_lines(node, dialect, anchor)
     if isinstance(node, (exp.Insert, exp.Update, exp.Delete, exp.Merge)):
@@ -71,7 +73,56 @@ def layout_statement(node: exp.Expression, dialect: str, width, anchor: int = 0)
         return _setop.layout_setop(node, dialect, width, anchor)
     if isinstance(node, exp.Select):
         return _select.layout_select(node, dialect, width, anchor)
-    raise Unsupported(type(node).__name__)
+    raise Unsupported(construct_name(node, dialect))
+
+
+def _source_lines(node, dialect: str, anchor: int):
+    """A statement the generator cannot print as written, cased from its source.
+
+    `SET x TO y` is the case this exists for: sqlglot records the assignment but
+    not which spelling made it, so its generator always prints `=`, and under
+    T-SQL it drops `LOCAL` and `SESSION` outright. There is no layout to
+    compute either -- SET is one line -- so the whole statement is the source
+    with its keywords cased.
+
+    Declines when the source is unavailable (nothing set it) or when the node is
+    one `sourcecase` cannot separate grammar from content in.
+    """
+    from sqlalign import sourcecase
+    from sqlalign.casing import source_sql
+
+    source = source_sql()
+    if source is None or not sourcecase.renders_from_source(node):
+        raise Unsupported(construct_name(node, dialect))
+    cased = sourcecase.recase(source.strip().rstrip(";").strip(), node, dialect,
+                              active_style().keyword_case)
+    return [Line(anchor, [Seg(cased)])]
+
+
+def construct_name(node, dialect: str) -> str:
+    """What to call `node` in a decline the user reads.
+
+    Both branches turn a sqlglot class name into something the user can find in
+    their own file, which is what CONTRIBUTING asks of every decline.
+
+    `exp.Command` is the catch-all for syntax sqlglot's parser does not model at
+    all, so its class name is the same word for every unrelated statement that
+    lands there: `SET ROLE reporting` and `RESET ROLE` both read as
+    `unsupported construct (Command)`, which describes neither. The keyword
+    sqlglot kept on the node is the statement's own name.
+
+    Otherwise, a class named after a SQL keyword is reported as that keyword --
+    `Set` as `SET`. Checked against the dialect's own vocabulary rather than a
+    list here, so this uppercases `SET` and `PIVOT` while leaving a name that
+    only looks like one (`Semicolon`, `Refresh`) alone.
+    """
+    if isinstance(node, exp.Command) and node.this:
+        return str(node.this).strip().upper()
+    name = type(node).__name__
+    from sqlglot.tokens import Tokenizer
+    if name.upper() in Tokenizer(dialect=dialect).KEYWORDS:
+        return name.upper()
+    return name
 
 
 def join_keyword(join: exp.Join) -> str:

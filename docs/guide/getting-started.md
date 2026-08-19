@@ -224,7 +224,7 @@ sqlalign --stdout passthru.sql
 ```
 
 ```
-sqlalign: passthru.sql: unsupported construct (Pivot), passed through: select * from t pivot (sum(x) for y in (
+sqlalign: passthru.sql: unsupported construct (PIVOT: this dialect has no such syntax), passed through: select * from t pivot (sum(x) for y in (
 ```
 
 ```sql
@@ -399,6 +399,29 @@ overriding it silently would be the wrong kind of helpful. The generated
 coexistence config is only the fallback when there is nothing to respect. If
 you write one by hand rather than generating it, expect `AL01` noise: sqlfluff
 defaults to requiring `AS` on table aliases, and sqlalign's default omits it.
+
+### A shared sqlfluff config
+
+`--lint` uses the `.sqlfluff` it finds beside your file, walking upwards the way
+sqlfluff itself does. A config your team keeps outside the repository is not on
+that path, so name it:
+
+```sh
+sqlalign --lint --sqlfluff-config ~/team/shared.sqlfluff models/
+```
+
+It wins over anything discovered. One editor action can then format and report
+your team's findings together — in a JetBrains External Tool, that is
+`--lint --sqlfluff-config /path/to/shared.sqlfluff "$FilePath$"`.
+
+It is refused without `--lint`, and refused if the path does not exist: taking a
+config nobody reads would leave you believing your rules had run.
+
+**`--lint` reports; it never fixes.** `sqlfluff fix` rewrites SQL — qualifying
+joins, changing cast styles — which is the thing sqlalign does not do, and a
+flag that reads like a reporter is a poor place to hide a rewriter. Run it
+yourself as a second step if you want it; the generated `.sqlfluff` excludes the
+whole `layout` group, so `sqlfluff fix` will not undo the alignment.
 
 ## The settings panel
 

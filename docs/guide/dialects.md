@@ -16,16 +16,10 @@ sqlalign --dialect tsql report.sql
 
 Three things to know before you read the per-dialect sections:
 
-**`--dialect` is a command-line flag only.** It is not a config-file key. Putting
-`dialect = "redshift"` in `.sqlalign.toml` is an error, not a silent no-op:
-
-```console
-$ sqlalign --stdout q.sql
-sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['dialect']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'boolean_operator_position', 'comma_position', 'decimal_style', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'width']
-```
-
-If a repository holds SQL for more than one engine, run sqlalign once per
-directory with the right flag, or use `--exclude` to split the run.
+**The dialect can be declared in the config, or given as a flag.** `--dialect`
+wins for a one-off run; `dialect` in `.sqlalign.toml` is what a repository
+commits. If a repository holds SQL for more than one engine, put a config beside
+each tree rather than running once per directory — see below.
 
 **There is no dialect auto-detection.** sqlalign will not sniff your file, and
 naming the wrong dialect is not covered by the safety guarantee — that guarantee
@@ -73,7 +67,7 @@ twenty-nine golden fixtures are Postgres: selects, joins, `WHERE` with
 `AND`/`OR`/`IN`/`BETWEEN`/`LIKE`, aggregates, CTEs, subqueries, `CASE`, window
 functions, set operations, `INSERT`/`UPDATE`/`DELETE`/`MERGE`, nested expressions
 and comments, `CREATE TABLE`, CTAS, views and materialized views, `CREATE
-FUNCTION` and `CREATE PROCEDURE`, `TRUNCATE`, `CREATE INDEX` and `GRANT`.
+FUNCTION` and `CREATE PROCEDURE`, `TRUNCATE`, `CREATE INDEX`, `GRANT` and `REVOKE`.
 
 ```console
 $ sqlalign --stdout query.sql
@@ -157,7 +151,7 @@ Anything without a layout handler passes through byte-identical with a warning.
 
 ```console
 $ sqlalign --stdout declines.sql
-sqlalign: declines.sql: unsupported construct, passed through: select * from t pivot (sum(x) for y in (
+sqlalign: declines.sql: unsupported construct (PIVOT: this dialect has no such syntax), passed through: select * from t pivot (sum(x) for y in (
 select * from t pivot (sum(x) for y in (1, 2)) p;
 INSERT INTO staging
 VALUES (1, 2);
@@ -451,8 +445,8 @@ These two are the reason T-SQL needs a guard the other dialects do not.
 
 ```console
 $ sqlalign --stdout --dialect tsql types.sql
-sqlalign: types.sql: unsupported construct, passed through: create table t (a real not null, b int);
-sqlalign: types.sql: unsupported construct, passed through: select cast(x as ntext) from t;
+sqlalign: types.sql: unsupported construct (tsql: type whose spelling sqlglot cannot preserve), passed through: create table t (a real not null, b int);
+sqlalign: types.sql: unsupported construct (tsql: type whose spelling sqlglot cannot preserve), passed through: select cast(x as ntext) from t;
 create table t (a real not null, b int);
 select cast(x as ntext) from t;
 ```

@@ -27,6 +27,8 @@ import re
 import sqlglot
 from sqlglot import exp
 
+from sqlalign.splitter import DOLLAR_TAG
+
 # A bare word: identifier-shaped, and UNICODE-aware on purpose. `apply` enters
 # this pattern on any `ch.isalpha()`, which is true of `é`: an ASCII-only
 # pattern then fails to match there and crashes the pass, which formatter's
@@ -89,8 +91,8 @@ def _body_identifiers(body: str, dialect: str) -> set[str]:
 
 
 def apply(text: str, names: set[str], case: str) -> str:
-    """Case every bare word outside strings, quoted identifiers, and comments,
-    leaving anything in `names` exactly as written."""
+    """Case every bare word outside strings, quoted identifiers, comments and
+    dollar-quote delimiters, leaving anything in `names` exactly as written."""
     if case == "upper":
         return text                       # what the handlers already emit
     out: list[str] = []
@@ -123,6 +125,19 @@ def apply(text: str, names: set[str], case: str) -> str:
             end = n if end == -1 else end + 2
             out.append(text[i:end])
             i = end
+        elif ch == "$" and (m := DOLLAR_TAG.match(text, i)):
+            # A dollar-quote delimiter is not a keyword. Its case is part of the
+            # delimiter -- Postgres matches `$BODY$` against `$BODY$` and not
+            # against `$body$` -- so lowering it respells the author's text, and
+            # neither safety layer could object: sqlglot's `exp.Heredoc` does not
+            # record the tag, and the token census emits the body's content with
+            # the tag excluded. It came out silently as `$body$` at both ends
+            # under `keyword_case = "lower"`, which the `dbt` preset sets.
+            #
+            # Only the delimiter is skipped, not the region: a `$$` body's own
+            # statements are SQL and are cased like any other.
+            out.append(m.group(0))
+            i = m.end()
         elif ch.isalpha() or ch == "_":
             word = _WORD.match(text, i).group(0)
             out.append(word if word in names else word.lower())

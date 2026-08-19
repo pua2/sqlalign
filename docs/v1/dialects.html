@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.3 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -219,13 +219,10 @@ sqlalign --dialect tsql report.sql
 </tbody>
 </table>
 <p>Three things to know before you read the per-dialect sections:</p>
-<p><strong><code>--dialect</code> is a command-line flag only.</strong> It is not a config-file key. Putting
-<code>dialect = &quot;redshift&quot;</code> in <code>.sqlalign.toml</code> is an error, not a silent no-op:</p>
-<pre><code class="language-console">$ sqlalign --stdout q.sql
-sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['dialect']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'boolean_operator_position', 'comma_position', 'decimal_style', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'width']
-</code></pre>
-<p>If a repository holds SQL for more than one engine, run sqlalign once per
-directory with the right flag, or use <code>--exclude</code> to split the run.</p>
+<p><strong>The dialect can be declared in the config, or given as a flag.</strong> <code>--dialect</code>
+wins for a one-off run; <code>dialect</code> in <code>.sqlalign.toml</code> is what a repository
+commits. If a repository holds SQL for more than one engine, put a config beside
+each tree rather than running once per directory — see below.</p>
 <p><strong>There is no dialect auto-detection.</strong> sqlalign will not sniff your file, and
 naming the wrong dialect is not covered by the safety guarantee — that guarantee
 is scoped to the dialect you asked for, and the layout handlers emit <em>that</em>
@@ -257,7 +254,7 @@ subject of the last section on this page.</p>
 twenty-nine golden fixtures are Postgres: selects, joins, <code>WHERE</code> with
 <code>AND</code>/<code>OR</code>/<code>IN</code>/<code>BETWEEN</code>/<code>LIKE</code>, aggregates, CTEs, subqueries, <code>CASE</code>, window
 functions, set operations, <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>/<code>MERGE</code>, nested expressions
-and comments, <code>CREATE TABLE</code>, CTAS, views and materialized views, <code>CREATE FUNCTION</code> and <code>CREATE PROCEDURE</code>, <code>TRUNCATE</code>, <code>CREATE INDEX</code> and <code>GRANT</code>.</p>
+and comments, <code>CREATE TABLE</code>, CTAS, views and materialized views, <code>CREATE FUNCTION</code> and <code>CREATE PROCEDURE</code>, <code>TRUNCATE</code>, <code>CREATE INDEX</code>, <code>GRANT</code> and <code>REVOKE</code>.</p>
 <pre><code class="language-console">$ sqlalign --stdout query.sql
 SELECT cust.customer_id
      , cust.email
@@ -324,7 +321,7 @@ drift apart. A body in a language that is not SQL at all (<code>plpythonu</code>
 <p>Anything without a layout handler passes through byte-identical with a warning.
 <code>PIVOT</code> is a current example:</p>
 <pre><code class="language-console">$ sqlalign --stdout declines.sql
-sqlalign: declines.sql: unsupported construct, passed through: select * from t pivot (sum(x) for y in (
+sqlalign: declines.sql: unsupported construct (PIVOT: this dialect has no such syntax), passed through: select * from t pivot (sum(x) for y in (
 select * from t pivot (sum(x) for y in (1, 2)) p;
 INSERT INTO staging
 VALUES (1, 2);
@@ -592,8 +589,8 @@ compares the separators themselves, so a dropped or added <code>GO</code> is sti
 <h3 id="real-and-ntext-decline-on-sight"><code>REAL</code> and <code>NTEXT</code> decline on sight<a class="anchor" href="#real-and-ntext-decline-on-sight" aria-label="Link to this section">#</a></h3>
 <p>These two are the reason T-SQL needs a guard the other dialects do not.</p>
 <pre><code class="language-console">$ sqlalign --stdout --dialect tsql types.sql
-sqlalign: types.sql: unsupported construct, passed through: create table t (a real not null, b int);
-sqlalign: types.sql: unsupported construct, passed through: select cast(x as ntext) from t;
+sqlalign: types.sql: unsupported construct (tsql: type whose spelling sqlglot cannot preserve), passed through: create table t (a real not null, b int);
+sqlalign: types.sql: unsupported construct (tsql: type whose spelling sqlglot cannot preserve), passed through: select cast(x as ntext) from t;
 create table t (a real not null, b int);
 select cast(x as ntext) from t;
 </code></pre>

@@ -32,7 +32,7 @@ def ddl_lines(node, dialect, width, anchor=0):
         return _create_lines(node, dialect, width, anchor)
     if isinstance(node, exp.TruncateTable):
         return _truncate_lines(node, dialect, anchor)
-    if isinstance(node, (exp.Grant, exp.Command)):
+    if isinstance(node, (exp.Grant, exp.Revoke, exp.Command)):
         return _grant_lines(node, dialect, anchor)
     if isinstance(node, exp.Alter):
         return _alter_lines(node, dialect, anchor)
@@ -308,6 +308,13 @@ def _create_index_lines(node, dialect, width, anchor):
 
 
 def _grant_lines(node, dialect, anchor):
+    """GRANT and REVOKE, one line each, spelled by sqlglot.
+
+    REVOKE was reachable here for a year before it was routed in: it parses to
+    its own node and renders on one line exactly as GRANT does, but was absent
+    from the dispatch, so every REVOKE in a permissions script declined while
+    the GRANT above it formatted.
+    """
     if isinstance(node, exp.Command):
         return [Line(anchor, [Seg(_uppercase_keywords(node, dialect))])]
     return [Line(anchor, [Seg(render_expr(node, dialect))])]

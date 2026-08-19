@@ -1,5 +1,210 @@
 # Changelog
 
+## 1.3.0
+
+The release is in two halves. The first is what sqlalign now does that it did
+not: statements it used to pass through now format, and a selection can be
+formatted on its own. The second is four things it was doing to your files that
+it should not have been — all found by auditing rather than reported, all silent,
+and all now either fixed or declined.
+
+### Statements sqlglot cannot print as written now format anyway
+
+1.2 stopped sqlalign respelling statements, by passing them through when the
+render would have changed a spelling. Honest, and it meant `ALTER COLUMN x TYPE
+text`, `DROP FUNCTION f()`, `ADD COLUMN c integer array` and `SET search_path TO
+public` did not format at all.
+
+They now format the one way that cannot lose a spelling: from the source text,
+changing nothing but the case of the keywords. Nothing is rebuilt, so nothing
+can be respelt.
+
+Telling a keyword from an identifier is the whole of it, and neither obvious
+answer works -- the tokenizer types `add`, `to` and `local` as ordinary words in
+exactly these statements, and the keyword table says `year`, `name` and `value`
+are keywords, so it would rename your columns. The parse tree separates them:
+what you wrote as a name or a value is a node in it, and the grammar around it
+lives in sqlglot's generator, on no node at all. A word you used both ways keeps
+the case you gave it.
+
+`SET ROLE reporting` and its relatives still pass through. sqlglot cannot parse
+them, so there is no tree to ask, and every word in one would read as grammar --
+which would rename the role.
+
+### `--lines`: format a selection
+
+```console
+$ sqlalign --lines 40:58 models/orders.sql        # just those lines
+$ sqlalign --lines 12 --lines 40:58 orders.sql    # two selections
+$ sqlalign --diff --lines 40:58 orders.sql        # review before writing
+```
+
+The unit is the statement, not the line: half a statement does not parse, so a
+range starting or ending inside one formats it entire. Everything outside comes
+back byte-identical, blank lines included -- asking about line 12 is not asking
+for the spacing at line 40 to be normalised.
+
+This is for adopting sqlalign on a repository nobody wants to reformat in one
+commit: format the lines your change touches, and the review stays about your
+change. An editor that hands over the selected text rather than line numbers --
+a visual selection piped through `:!` in vim -- wants `sqlalign -` instead.
+
+### `--sqlfluff-config`
+
+    sqlalign --lint --sqlfluff-config ~/company/.sqlfluff models/
+
+Points `--lint` at a config outside the repository, which is the shape a shared
+company ruleset actually has: one file, many checkouts, no copy per repo. Without
+it, `--lint` discovers a config by walking up from the file and falls back to a
+generated one. `--lint` reports; it has never called `sqlfluff fix`.
+
+### A comment on its own line no longer costs you the whole procedure
+
+An own-line comment inside a `$$` body sent the entire procedure through
+unformatted. The clause splitter glues such a comment to the statement below it,
+so the plain-clause renderer saw a comment with code after it -- which has no
+faithful one-line rendering -- and declined. A procedure that reads
+
+    begin
+      -- clear the staging table
+      delete from staging;
+
+is the ordinary way people write plpgsql, and this made it unformattable.
+
+It is faithfully renderable, just not on one line. The comment now stays on its
+own line above the code, exactly as written. The same merged comment was also
+hiding the keyword the body parser dispatches on, so an `IF` behind a comment
+was neither recognised as a block nor found as the `END`, and the procedure
+declined a second time as malformed.
+
+What still declines is the one shape with no faithful rendering: a comment with
+code after it on the same line.
+
+### Declines are named in SQL rather than in Python
+
+`SET ROLE reporting` and `RESET ROLE` reported as `unsupported construct
+(Command)`. `Command` is sqlglot's catch-all for syntax its parser does not
+model, so it named the fallback rather than the statement, and named every
+unrelated construct that lands there the same way. `SET search_path TO public`
+had the milder version: `Set`, a class name where SQL was meant.
+
+They are now named for the keyword the statement starts with, checked against
+the dialect's own vocabulary. sqlglot's accompanying log line -- `'SET ROLE
+reporting' contains unsupported syntax. Falling back to parsing as a
+'Command'.` -- no longer reaches the CLI's stderr, since sqlalign reports the
+same statement by name and with the text it passed through. The library leaves
+that logger alone.
+
+### Corrections
+
+Each of these changed a file without saying so.
+
+**If you ran 1.2 or earlier over procedures or intervals, your files may already
+carry these changes.** Measured against 1.2.0 rather than described from memory:
+
+| What 1.2 and earlier did | Still valid SQL | Meaning changed |
+|---|---|---|
+| `interval '14 days'` came back as `INTERVAL '14 DAYS'` | yes | no — interval units are case-insensitive |
+| `LANGUAGE 'plpgsql'` came back as `LANGUAGE plpgsql` | yes | no |
+| `$BODY$` came back as `$body$`, under `keyword_case = "lower"` only | yes | no — both ends moved together |
+| `DECLARE n int; -- note` came back with the comment keyword-cased and a `;` inside it | yes | no — comment text only |
+| A `LANGUAGE sql` body's last statement lost its terminator into a trailing comment | yes | no — a final statement needs none |
+| **`$café$ … $café$` had its CONTENTS reformatted** | yes | **yes — the string literal changed** |
+
+Only the last one altered anything a query would return, and only if you use a
+dollar-quote tag containing non-ASCII characters, which is legal and rare. The
+rest are byte differences in valid SQL that means what it meant.
+
+To find the last one, look for a non-ASCII dollar tag:
+
+```console
+$ grep -rlP '\$[^\x00-\x7F$]+\$' --include='*.sql' .
+```
+
+For the rest, your version control already has the answer — the diff from the
+commit where sqlalign first ran over a file is the complete list of what it
+changed, and none of it needs undoing.
+
+### The token guard was blind to case inside a string literal
+
+1.2 added a token census so a statement sqlglot's parser silently respells is
+passed through instead. It uppercased every token before counting, string
+literals included -- so a change inside one was invisible to it, and to the other
+two checks as well: `INTERVAL '14 days'` parses to `Var(DAYS)`, identical tree
+either way, so `ast_equal` could not see it and neither could the census.
+
+`INTERVAL '14 days'` had been going out as `INTERVAL '14 DAYS'` in every release
+up to and including 1.2, with nothing declining. Literal content is now compared
+as written.
+
+Closing that alone would have stopped `interval '14 days'` formatting at all,
+since the spelling is gone from the tree by the time the renderer runs. It is
+restored from the statement's own source instead, so the common case formats and
+keeps what the author typed. Case only, looked up in the statement being
+rendered -- a substitution cannot introduce a spelling the author did not write,
+and if one somehow did, the census now sees it. A statement that writes the same
+literal two ways offers neither spelling, since either choice would respell the
+other, and a `$$` body is exempt from the census that would otherwise catch it.
+
+### The rewrite guard now reaches inside a procedure body
+
+1.2's census could not run on a statement carrying a `$$` body. The tokenizer
+sees a body as one token, so comparing the whole statement sees nothing inside
+it, and comparing the body's own tokens compares a laid-out body against an
+unformatted one. So bodies were excluded, and a respelling inside a procedure
+had nothing catching it -- which is how `INTERVAL '14 days'` shipped as
+`'14 DAYS'` from inside one.
+
+Each clause is now compared against the clause it was rendered from, using the
+split the structural check already relies on. Three things had to change first,
+and the third is a behaviour change worth naming: **`LANGUAGE 'plpgsql'` keeps
+its quoting.** It was being normalised to the bare form, which is a respelling,
+and this was the last place the engine still performed one on your behalf.
+
+A procedure that respells is passed through rather than cased from source: one
+clause would cost every other clause in the body its layout.
+
+### Three fixes around dollar-quoted bodies
+
+Tagged dollar quotes (`$func$` rather than bare `$$`) were already a working
+case, and auditing that path found three defects — two of which had nothing to
+do with tags.
+
+**A non-ASCII tag changed your data.** Postgres says a dollar-quote tag follows
+the rules for an unquoted identifier, and those are not ASCII-only: `$café$` and
+`$ñ$` are legal. sqlalign's pattern was ASCII-only, so it did not see the region
+as a quoted one at all — the file was cut at a `;` *inside* the literal and the
+fragments formatted as SQL. A `<>` inside a `$ñ$ … $ñ$` string came back as `!=`,
+with the warnings still reporting "passthrough". The pattern now follows
+Postgres, and it has one definition rather than the two that had to be found and
+widened separately.
+
+**`keyword_case = "lower"` lowered the tag itself.** `$BODY$` shipped as
+`$body$` at both ends, silently: valid SQL, which is why nothing objected, but
+not what you wrote. Neither safety layer could see it — sqlglot's `Heredoc` does
+not record the tag and the census excludes it. The `dbt` preset sets that case,
+so it reached everyone using it.
+
+**A comment inside a body was outside the comment guard.** `comment_text`
+returned `[]` for an entire procedure, because a body is one token and it did not
+descend. `comments_equal` was therefore vacuously true for anything in one, and
+`DECLARE n int; -- count from the source table` shipped as
+`-- count FROM the source TABLE;` — keyword-cased, with the terminator inside the
+comment. Both the guard and `_render_declare` are fixed; this one affected bare
+`$$` too.
+
+Putting the guard in place immediately caught a second instance on the other
+rendering path: `_render_sql_stmt` appended the terminator to the raw clause, so
+a `LANGUAGE sql` body reading `select 1 -- why` shipped as `SELECT 1 -- why;`
+with the statement left unterminated. Also fixed.
+
+### Fixed
+
+- **`REVOKE` declined while the `GRANT` above it formatted.** Not a modelling
+  gap -- REVOKE parses to its own node and renders on one line exactly as GRANT
+  does. It was missing from the layout dispatch, and a permissions script is
+  where the asymmetry shows.
+
 ## 1.2.0
 
 ### sqlalign no longer respells your statements silently

@@ -68,9 +68,12 @@ from dataclasses import dataclass
 from sqlglot import exp
 
 from sqlalign.layout import Unsupported
+from sqlalign.splitter import DOLLAR_TAG
 
-# Dollar-quote tag (mirrors splitter.py): bare `$$` or `$tag$`.
-_DOLLAR = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+# Imported rather than mirrored. The copy this replaces was a second ASCII-only
+# regex that had to be found and widened separately, which is exactly how the
+# two drift.
+_DOLLAR = DOLLAR_TAG
 _IDENT_CHARS = re.compile(r"[A-Za-z0-9_]")
 
 # SELECT-list terminators: the first depth-0 occurrence of any of these (as a

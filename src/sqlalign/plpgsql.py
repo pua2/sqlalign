@@ -199,6 +199,37 @@ def _upper_kw(text: str, dialect: str) -> str:
     return " ".join(t.upper() if t.upper() in kw else t for t in _tokenize_ws(text))
 
 
+def _own_line_comments(text: str) -> tuple[list[str], str]:
+    """Leading comment lines peeled off `text`, and what remains.
+
+    The clause splitter glues an own-line comment to the statement below it, so
+    a body that reads
+
+        -- clear the staging table
+        delete from staging;
+
+    arrives here as one clause. Those two lines are exactly what the author
+    wrote and exactly what should come out, so the comment is kept as its own
+    line rather than merged into the statement or declined.
+    """
+    leading: list[str] = []
+    lines = text.splitlines()
+    index = 0
+    for index, line in enumerate(lines):            # noqa: B007 - index is used after
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("--"):
+            leading.append(stripped)
+            continue
+        break
+    else:
+        return leading, ""
+    # Stripped: `_take_comments` writes this back as the clause, and the leading
+    # indent left `head[len("if"):]` slicing off two spaces instead of the `IF`.
+    return leading, "\n".join(lines[index:]).strip()
+
+
 def _split_comment(text: str) -> tuple[str, str | None]:
     """`text` as (code, trailing comment or None), split outside string literals.
 
@@ -207,10 +238,12 @@ def _split_comment(text: str) -> tuple[str, str | None]:
     as `-- LOG it FOR the user;`, semicolon and all, with nothing declining.
     Comments are not code and never go through casing.
 
-    Only a comment that runs to the end of the clause is split off. One with
-    code after it (a closed `/* ... */` mid-clause, or code on the line after a
-    `--`) has no faithful single-line rendering here, so the clause declines
-    rather than guessing -- the same contract the SQL comment engine follows.
+    Leading own-line comments are peeled off before this by
+    `_own_line_comments`, so what reaches here is a single line of code with at
+    most a comment after it. A comment with code following it ON THE SAME LINE
+    -- a closed `/* ... */` mid-statement -- has no faithful one-line rendering
+    and declines rather than guessing, which is the contract the SQL comment
+    engine follows.
     """
     in_string = False
     i = 0
@@ -234,11 +267,18 @@ def _split_comment(text: str) -> tuple[str, str | None]:
 
 
 def _render_plain(text: str, dialect: str) -> str:
+    leading, text = _own_line_comments(text.strip())
+    if not text:
+        # The clause is nothing but comments -- verbatim, and no terminator:
+        # a `;` after `--` becomes part of the comment.
+        return "\n".join(leading)
     text, comment = _split_comment(text.strip())
     if text.lower().startswith("get diagnostics"):
         rendered = _render_get_diagnostics(text)
     else:
         rendered = _upper_kw(text, dialect)
+    if leading:
+        rendered = "\n".join([*leading, rendered]) if rendered else "\n".join(leading)
     if comment is None:
         return rendered
     if not rendered:
@@ -297,7 +337,13 @@ def _header_lines(node, dialect: str, tag: str) -> list[str]:
     lang = body_language(node)
     if lang is None:
         raise Unsupported(f"plpgsql: language {_language_name(node)!r}")
-    lines.append(f"LANGUAGE {lang}")             # canonical bare form
+    # `LANGUAGE 'plpgsql'` (quoted, legacy) and `LANGUAGE plpgsql` are the same
+    # to Postgres, and this used to normalise the first into the second. That is
+    # a respelling, which since 1.2 sqlalign does not do on the author's behalf
+    # -- and once the census reached inside bodies it said so. sqlglot records
+    # which was written (a Literal against a Var), so it is given back.
+    quoted = isinstance(language.this, exp.Literal) and language.this.is_string
+    lines.append(f"LANGUAGE '{lang}'" if quoted else f"LANGUAGE {lang}")
     lines.append("AS " + tag)
     return lines
 
@@ -319,12 +365,28 @@ def _norm(clause: str) -> str:
 def _render_sql_stmt(raw: str, dialect: str, style) -> str:
     """Route an embedded SQL statement through the main engine (identical
     formatting to top level). A construct the engine declines passes through
-    verbatim per §6 — the whole body's safety check still validates it."""
+    verbatim per §6 — the whole body's safety check still validates it.
+
+    Comments come off first, for the same reason `_terminate` takes them off:
+    `raw + ";"` put the terminator INSIDE a trailing comment, so
+    `select 1 -- why` shipped as `SELECT 1 -- why;` and the statement was no
+    longer terminated. Nothing caught it until `comment_text` learned to look
+    inside a body.
+    """
     from sqlalign.formatter import _format_statement  # lazy: breaks import cycle
+
+    leading, code = _own_line_comments(raw.strip())
+    if not code:
+        return "\n".join(leading)
+    code, comment = _split_comment(code)
+    code = code.rstrip().rstrip(";").rstrip()
     try:
-        return _format_statement(raw + ";", dialect, style)
+        rendered = _format_statement(code + ";", dialect, style)
     except Unsupported:
-        return raw.strip() + ";"
+        rendered = code + ";"
+    if comment:
+        rendered = f"{rendered} {comment}"
+    return _above(leading, rendered)
 
 
 def _is_sql(raw: str, dialect: str) -> bool:
@@ -349,10 +411,26 @@ def _render_stmt(raw: str, dialect: str, style) -> str:
 def _terminate(rendered: str) -> str:
     """`rendered` with its `;` in the right place: after the code, before any
     trailing comment, and not at all when the clause is only a comment --
-    anything after `--` is part of the comment, including a semicolon."""
+    anything after `--` is part of the comment, including a semicolon.
+
+    Leading own-line comments are set aside first. They are already rendered by
+    this point, and re-reading them as "a comment with code after it" is what
+    made an ordinary commented statement decline.
+    """
+    leading, rendered = _own_line_comments(rendered)
+    if not rendered:
+        return "\n".join(leading)
     code, comment = _split_comment(rendered)
+    if leading:
+        joined = _terminate_one(code, comment)
+        return "\n".join([*leading, joined])
+    return _terminate_one(code, comment)
+
+
+def _terminate_one(code: str, comment: str | None) -> str:
+    """One line of code plus its trailing comment, terminated."""
     if not code:
-        return rendered
+        return comment or ""
     if not code.endswith(";"):
         code += ";"
     return f"{code} {comment}" if comment else code
@@ -375,7 +453,17 @@ def _render_declare(decls: list[str], dialect: str) -> str:
     if len(parts) != 2:
         raise Unsupported("plpgsql DECLARE: unrecognized declaration")
     name, rest = parts
-    return f"DECLARE {name} {_upper_kw(rest, dialect)};"
+    # The comment comes off before casing, exactly as `_render_plain` does it.
+    # Without this, `_upper_kw` whitespace-tokenized the comment along with the
+    # declaration -- `-- count from the source table` shipped as
+    # `-- count FROM the source TABLE`, and `_terminate`'s `;` landed inside it.
+    rest, comment = _split_comment(rest.strip())
+    # The clause splitter keeps a trailing comment with the statement it follows,
+    # so the terminator arrives here in the middle: `int; -- note`. It is dropped
+    # and re-added after the code, which is where it belongs.
+    rest = rest.rstrip().rstrip(";").rstrip()
+    declared = f"DECLARE {name} {_upper_kw(rest, dialect)};"
+    return f"{declared} {comment}" if comment else declared
 
 
 def _consume_if(stmts: list[str], j: int, dialect: str):
@@ -425,6 +513,37 @@ def _consume_if(stmts: list[str], j: int, dialect: str):
     return "\n".join(lines), j
 
 
+def _take_comments(clauses: list[str], k: int) -> tuple[int, list[str]]:
+    """Own-line comments leading `clauses[k]`, and where the code starts.
+
+    The clause splitter glues an own-line comment to whatever follows it, which
+    hides the keyword the body parser is looking for: `-- guard` before an `IF`
+    made `_first_word` read `--`, and the block was neither recognised as an IF
+    nor found as the `END`. Peeling the comments off before every structural
+    decision means a commented body parses exactly like the same body without
+    the comments.
+
+    They are returned rather than emitted so the caller can put them back on top
+    of the element they introduce. Emitting them as elements of their own looks
+    right until `body_blank_lines` is applied, which then separates a comment
+    from the statement it is about.
+    """
+    comments: list[str] = []
+    while k < len(clauses):
+        leading, code = _own_line_comments(clauses[k])
+        comments.extend(leading)
+        if code:
+            clauses[k] = code
+            break
+        k += 1                              # the clause was comments and nothing else
+    return k, comments
+
+
+def _above(comments: list[str], element: str) -> str:
+    """`element` with its own-line comments restored above it."""
+    return "\n".join([*comments, element]) if comments else element
+
+
 def _parse_body_elements(body: str, dialect: str, style, language="plpgsql") -> list[str]:
     cls = body_clauses(body)
     if language == "sql":
@@ -434,32 +553,46 @@ def _parse_body_elements(body: str, dialect: str, style, language="plpgsql") -> 
         return [_render_stmt(c, dialect, style) for c in cls]
     elements: list[str] = []
     i, n = 0, len(cls)
+    i, comments = _take_comments(cls, i)
     if i < n and _first_word(cls[i]) == "declare":
         decls = [cls[i][len("declare"):].strip()]
         i += 1
         while i < n and _first_word(cls[i]) != "begin":
             decls.append(cls[i].strip())
             i += 1
-        elements.append(_render_declare(decls, dialect))
+        elements.append(_above(comments, _render_declare(decls, dialect)))
+        comments = []
+    i, more = _take_comments(cls, i)
+    comments += more
     if i >= n or _first_word(cls[i]) != "begin":
         raise Unsupported("plpgsql: expected BEGIN")
-    elements.append("BEGIN")
+    elements.append(_above(comments, "BEGIN"))
     begin_rest = cls[i][len("begin"):].strip()
     i += 1
     stmts = ([begin_rest] if begin_rest else []) + cls[i:]
     j, m = 0, len(stmts)
-    while j < m and _first_word(stmts[j]) != "end":
+    while True:
+        j, comments = _take_comments(stmts, j)
+        if j >= m or _first_word(stmts[j]) == "end":
+            break
         if _first_word(stmts[j]) == "if":
             block, j = _consume_if(stmts, j, dialect)
-            elements.append(block)
+            elements.append(_above(comments, block))
         else:
-            elements.append(_render_stmt(stmts[j], dialect, style))
+            elements.append(_above(comments, _render_stmt(stmts[j], dialect, style)))
             j += 1
     if j >= m or _norm(stmts[j]) != "end":     # bare END only (no label/args)
         raise Unsupported("plpgsql: expected END")
-    if j != m - 1:
+    j, trailing = _take_comments(stmts, j + 1)
+    if j != m:
         raise Unsupported("plpgsql: statements after END")
-    elements.append("END;")
+    elements.append(_above(comments, "END;"))
+    if trailing:
+        # A comment written after END stays after END. Folding it into that
+        # element would read better with `body_blank_lines` set, and would move
+        # a comment past the statement it follows, which is not a formatter's
+        # call to make.
+        elements.append("\n".join(trailing))
     return elements
 
 

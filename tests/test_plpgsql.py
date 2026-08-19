@@ -82,10 +82,23 @@ def test_if_then_else_geometry():
 
 
 def test_quoted_language_input_still_formats():
-    """A real-world `LANGUAGE 'plpgsql'` (quoted, legacy) input must format to
-    the bare canonical form — the dollar-aware safety check accepts it."""
+    """A real-world `LANGUAGE 'plpgsql'` (quoted, legacy) input formats, and
+    keeps its quoting.
+
+    It used to be normalised to the bare form. Both are the same to Postgres,
+    but choosing between them is a respelling, and sqlalign has not done that on
+    the author's behalf since 1.2 -- the census reaching inside bodies in 1.3 is
+    what caught this one still doing it.
+    """
     inp = ("create function g() returns int language 'plpgsql' as $$ begin "
            "return 1; end; $$;")
+    result = format_sql(inp, "postgres")
+    assert result.warnings == []
+    assert "LANGUAGE 'plpgsql'\nAS $$" in result.text
+
+
+def test_an_unquoted_language_stays_unquoted():
+    inp = "create function g() returns int language plpgsql as $$ begin return 1; end; $$;"
     result = format_sql(inp, "postgres")
     assert result.warnings == []
     assert "LANGUAGE plpgsql\nAS $$" in result.text

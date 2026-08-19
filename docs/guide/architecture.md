@@ -326,9 +326,38 @@ warning, so an expected decline is distinguishable from a bug in stderr:
 |---|---|
 | sqlglot cannot parse the statement | `passthrough (parse error line N): …` |
 | a layout handler raised `Unsupported` | `unsupported construct, passed through: …` |
+| the render would respell the statement, and casing it from source is not possible either | `formatting would respell this statement, passed through unformatted: …` — the first half is usually recoverable (see below); this is what is left |
 | the output would not AST-compare equal | `formatting would change semantics, passed through unformatted: …` — **a bug report**, not a decline: the renderer emitted something that means a different thing |
 | …and sqlglot cannot round-trip the input either | `sqlglot cannot round-trip this statement, passed through unformatted: …` — the fault is upstream, so no formatter built on sqlglot could satisfy the check |
 | any other exception | `internal formatter error, passed through (please report): …` |
+
+**A respelling is usually recovered rather than declined.** sqlglot's parser
+collapses some pairs of spellings onto one node — `ALTER COLUMN x TYPE t` and
+`SET DATA TYPE t` are the same tree — so rendering from the node prints whichever
+the generator prefers. When the token census catches that, the statement is cased
+from its own source instead (`sourcecase.py`): the source text with keyword spans
+recased and every other byte untouched. Nothing is rebuilt, so nothing can be
+respelt, and the same three checks are re-run against the result.
+
+Keywords are told from identifiers by the parse tree, not by the keyword table.
+What the author wrote as a name or value is a node; the grammar around it lives
+in the generator and is on no node. A statement sqlglot could only parse as
+`exp.Command` has no such tree and still passes through.
+
+The construct in an `unsupported construct (…)` warning is the node type the
+layout engine declined to model. One node type needs translating: `exp.Command`
+is sqlglot's catch-all for syntax its parser does not model at all, so it is the
+same word for every unrelated statement that lands there. It is reported under
+the keyword sqlglot kept on the node instead — `unsupported construct (SET)`
+rather than `unsupported construct (Command)`.
+
+sqlglot logs its own fallback for those statements (`'SET ROLE reporting'
+contains unsupported syntax. Falling back to parsing as a 'Command'.`). The CLI
+raises that logger to `ERROR`, because sqlalign reports the same statement by
+name and with the text it passed through — the warning is a second, less
+informative copy on the same stream. The library does not touch the logger:
+`sqlalign.format` runs inside someone else's program, where silencing a
+dependency is not a formatter's business.
 
 One decline is file-wide rather than per statement: a template expression too
 short to hold a same-width placeholder (`{{x}}`) fails before splitting, so the

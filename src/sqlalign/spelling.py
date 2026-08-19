@@ -26,11 +26,27 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.tokens import TokenType
 
+# Tokens whose text is CONTENT rather than syntax: a string literal, a quoted
+# identifier, a `$$ ... $$` body. Casefolding these before comparing made the
+# census blind to a change inside one -- `INTERVAL '14 days'` came back as
+# `INTERVAL '14 DAYS'` and every check passed, because sqlglot normalises the
+# unit to `Var(DAYS)` in the tree (so `ast_equal` cannot see it either) and the
+# census had uppercased both sides. Compared byte-for-byte instead.
+_VERBATIM = frozenset({TokenType.STRING, TokenType.IDENTIFIER,
+                       TokenType.HEREDOC_STRING, TokenType.RAW_STRING,
+                       TokenType.NATIONAL_STRING, TokenType.BYTE_STRING,
+                       TokenType.HEX_STRING, TokenType.UNICODE_STRING})
+
 # `AS` before a table alias is `Style.table_alias_style`, which exists to add or
 # remove exactly this token. It carries no meaning of its own -- `FROM t a` and
 # `FROM t AS a` are the same tree -- so it is dropped from both sides rather
 # than compared.
-_OPTIONAL = frozenset({"AS"})
+# `;` joins it for the same reason: the formatter terminates statements that
+# arrived without one -- a T-SQL `CREATE PROCEDURE ... END` comes back as
+# `END;` -- so counting terminators reports every such statement as rewritten.
+# Losing one cannot hide here: it changes where statements begin and end, and
+# both the splitter and the per-statement tree comparison see that.
+_OPTIONAL = frozenset({"AS", ";"})
 
 # `!=` / `<>` is `Style.neq_style`; the two are one operator to every engine
 # sqlalign supports. Written here because it is an operator rather than a type,
@@ -71,6 +87,45 @@ def type_synonyms(dialect: str) -> dict[str, str]:
             for group in by_node.values() for spelling in group}
 
 
+def literal_spellings(sql: str, dialect: str) -> dict[str, str]:
+    """`sql`'s string literals, keyed by their uppercase form.
+
+    The renderer's way back to a spelling sqlglot normalised out of the tree.
+    Uppercase keys because case is the only thing that can be recovered this
+    way: two literals differing by anything else are different literals, and one
+    of them must not be printed for the other.
+
+    A statement that writes one literal two ways offers neither.
+    """
+    tokenizer = sqlglot.Dialect.get_or_raise(dialect).tokenizer_class()
+    spellings: dict[str, str] = {}
+    ambiguous: set[str] = set()
+    for token in tokenizer.tokenize(sql):
+        if token.token_type is TokenType.STRING:
+            key = token.text.upper()
+            if spellings.setdefault(key, token.text) != token.text:
+                # The same literal written two ways in one statement. There is
+                # no spelling to restore -- either choice respells the other --
+                # so neither is offered and sqlglot's own output stands. It
+                # matters here because a `$$` body is exempt from the token
+                # census, so a wrong substitution inside one has nothing
+                # downstream to catch it.
+                ambiguous.add(key)
+        elif token.token_type is TokenType.HEREDOC_STRING:
+            # A `$$ ... $$` body is ONE token here, so its own literals are
+            # invisible from outside it -- and the statements inside a body are
+            # laid out by the same engine, through the same generator, with the
+            # same spelling to lose. Descend rather than tokenize the body
+            # separately: the body is part of the statement, and its literals
+            # are the statement's.
+            for key, text in literal_spellings(token.text, dialect).items():
+                if spellings.setdefault(key, text) != text:
+                    ambiguous.add(key)
+    for key in ambiguous:
+        del spellings[key]
+    return spellings
+
+
 def token_census(sql: str, dialect: str) -> collections.Counter:
     """`sql`'s significant tokens counted, order discarded.
 
@@ -94,15 +149,33 @@ def token_census(sql: str, dialect: str) -> collections.Counter:
 def significant_tokens(sql: str, dialect: str) -> list[str]:
     """`sql` as the tokens that carry the author's intent.
 
-    Case is normalized because `Style.keyword_case` chooses it, optional `AS` is
-    dropped, and a spelling with a synonym is replaced by its canonical form.
-    What survives is what sqlalign has no licence to change: identifiers,
-    literals, operators, and every keyword that is not one of its settings.
+    Case is normalized for syntax because `Style.keyword_case` chooses it,
+    optional `AS` is dropped, and a spelling with a synonym is replaced by its
+    canonical form. Content -- string literals, quoted identifiers, `$$` bodies
+    -- is compared as written, since nothing sqlalign does may change a byte
+    inside one. What survives is what sqlalign has no licence to change.
     """
     tokenizer = sqlglot.Dialect.get_or_raise(dialect).tokenizer_class()
     synonyms = type_synonyms(dialect)
     tokens = []
+    previous = None
     for token in tokenizer.tokenize(sql):
+        if (token.token_type is TokenType.STRING
+                and previous is TokenType.COMMAND
+                and len(token.text) < len(sql)):
+            # Not a literal. After a keyword it cannot parse -- `DECLARE`, `SET`
+            # -- the tokenizer stops and hands back the rest of the statement as
+            # one STRING, so `declare row_count int` arrives here as the "string"
+            # `row_count int`. Comparing that as content made keyword casing look
+            # like a rewrite, and every procedure with a DECLARE declined.
+            # Tokenizing into it keeps real literals inside verbatim.
+            tokens.extend(significant_tokens(token.text, dialect))
+            previous = token.token_type
+            continue
+        previous = token.token_type
+        if token.token_type in _VERBATIM:
+            tokens.append(f"{token.token_type.name}:{token.text}")
+            continue
         word = token.text.strip().upper()
         if not word or word in _OPTIONAL:
             continue

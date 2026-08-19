@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.3 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -376,7 +376,7 @@ FROM u;
 cannot reproduce exactly is emitted unchanged, with a warning on <strong>stderr</strong>:</p>
 <pre><code class="language-sh">sqlalign --stdout passthru.sql
 </code></pre>
-<pre><code>sqlalign: passthru.sql: unsupported construct (Pivot), passed through: select * from t pivot (sum(x) for y in (
+<pre><code>sqlalign: passthru.sql: unsupported construct (PIVOT: this dialect has no such syntax), passed through: select * from t pivot (sum(x) for y in (
 </code></pre>
 <pre><code class="language-sql">select * from t pivot (sum(x) for y in (1, 2)) p;
 </code></pre>
@@ -504,6 +504,22 @@ overriding it silently would be the wrong kind of helpful. The generated
 coexistence config is only the fallback when there is nothing to respect. If
 you write one by hand rather than generating it, expect <code>AL01</code> noise: sqlfluff
 defaults to requiring <code>AS</code> on table aliases, and sqlalign's default omits it.</p>
+<h3 id="a-shared-sqlfluff-config">A shared sqlfluff config<a class="anchor" href="#a-shared-sqlfluff-config" aria-label="Link to this section">#</a></h3>
+<p><code>--lint</code> uses the <code>.sqlfluff</code> it finds beside your file, walking upwards the way
+sqlfluff itself does. A config your team keeps outside the repository is not on
+that path, so name it:</p>
+<pre><code class="language-sh">sqlalign --lint --sqlfluff-config ~/team/shared.sqlfluff models/
+</code></pre>
+<p>It wins over anything discovered. One editor action can then format and report
+your team's findings together — in a JetBrains External Tool, that is
+<code>--lint --sqlfluff-config /path/to/shared.sqlfluff &quot;$FilePath$&quot;</code>.</p>
+<p>It is refused without <code>--lint</code>, and refused if the path does not exist: taking a
+config nobody reads would leave you believing your rules had run.</p>
+<p><strong><code>--lint</code> reports; it never fixes.</strong> <code>sqlfluff fix</code> rewrites SQL — qualifying
+joins, changing cast styles — which is the thing sqlalign does not do, and a
+flag that reads like a reporter is a poor place to hide a rewriter. Run it
+yourself as a second step if you want it; the generated <code>.sqlfluff</code> excludes the
+whole <code>layout</code> group, so <code>sqlfluff fix</code> will not undo the alignment.</p>
 <h2 id="the-settings-panel">The settings panel<a class="anchor" href="#the-settings-panel" aria-label="Link to this section">#</a></h2>
 <blockquote>
 <p><strong>The panel is experimental.</strong> It is useful and it is tested, but it is the
@@ -740,7 +756,7 @@ the <a href="https://github.com/pua2/sqlalign/blob/main/README.md">README</a>.</
 the <a href="architecture.html">Architecture</a> page.</li>
 </ul>
 </main>
-  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#install">Install</a><a class="lvl2" href="#your-first-format">Your first format</a><a class="lvl2" href="#look-before-you-write">Look before you write</a><a class="lvl2" href="#formatting-a-directory">Formatting a directory</a><a class="lvl3" href="#excluding-files">Excluding files</a><a class="lvl2" href="#skipping-one-statement">Skipping one statement</a><a class="lvl2" href="#when-sqlalign-declines">When sqlalign declines</a><a class="lvl2" href="#linting-inside-bodies">Linting inside $$ bodies</a><a class="lvl2" href="#running-sqlfluff-alongside-it">Running sqlfluff alongside it</a><a class="lvl3" href="#one-command-instead-of-two">One command instead of two</a><a class="lvl2" href="#the-settings-panel">The settings panel</a><a class="lvl2" href="#editors">Editors</a><a class="lvl2" href="#git-pre-commit-hook">Git pre-commit hook</a><a class="lvl2" href="#ci">CI</a><a class="lvl2" href="#starting-a-config">Starting a config</a><a class="lvl2" href="#calling-it-from-python">Calling it from Python</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#where-to-go-next">Where to go next</a></aside>
+  <aside class="toc" aria-label="On this page"><p class="side-h">On this page</p><a class="lvl2" href="#install">Install</a><a class="lvl2" href="#your-first-format">Your first format</a><a class="lvl2" href="#look-before-you-write">Look before you write</a><a class="lvl2" href="#formatting-a-directory">Formatting a directory</a><a class="lvl3" href="#excluding-files">Excluding files</a><a class="lvl2" href="#skipping-one-statement">Skipping one statement</a><a class="lvl2" href="#when-sqlalign-declines">When sqlalign declines</a><a class="lvl2" href="#linting-inside-bodies">Linting inside $$ bodies</a><a class="lvl2" href="#running-sqlfluff-alongside-it">Running sqlfluff alongside it</a><a class="lvl3" href="#one-command-instead-of-two">One command instead of two</a><a class="lvl3" href="#a-shared-sqlfluff-config">A shared sqlfluff config</a><a class="lvl2" href="#the-settings-panel">The settings panel</a><a class="lvl2" href="#editors">Editors</a><a class="lvl2" href="#git-pre-commit-hook">Git pre-commit hook</a><a class="lvl2" href="#ci">CI</a><a class="lvl2" href="#starting-a-config">Starting a config</a><a class="lvl2" href="#calling-it-from-python">Calling it from Python</a><a class="lvl2" href="#exit-codes">Exit codes</a><a class="lvl2" href="#where-to-go-next">Where to go next</a></aside>
 </div>
 <script>// Docs chrome: theme toggle, version selector, on-this-page highlighting, and
 // search over the generated index. No dependencies -- the site is static files

@@ -11,7 +11,21 @@ import re
 # and may contain digits thereafter (e.g. `$fn1$`): matches Postgres's identifier
 # rules for dollar-quote tags, which allow digits after the first character.
 # Public because plpgsql.py splits the same bodies and must agree exactly.
-DOLLAR_TAG = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+# A dollar-quote delimiter: bare `$$` or `$tag$`. Postgres says a tag follows
+# the rules for an unquoted identifier, and those are NOT ASCII-only -- `$café$`
+# and `$ñ$` are legal tags. `[^\W\d]` is "a word character that is not a digit",
+# which is a Unicode letter or underscore, so the leading-character rule holds
+# for every alphabet rather than just the Latin one.
+#
+# Getting this wrong is not a cosmetic miss. A tag this does not recognise is a
+# region nobody treats as opaque, so the file is cut at a `;` INSIDE the literal
+# and the fragments are formatted as if they were SQL -- `<>` inside a
+# `$ñ$ ... $ñ$` string came back as `!=`, changing stored data, with the
+# warnings still saying "passthrough".
+#
+# A digit cannot lead, which is what keeps a positional parameter (`$1`, `$2`)
+# from ever being read as a quote opener.
+DOLLAR_TAG = re.compile(r"\$(?:[^\W\d]\w*)?\$")
 
 _IDENT_CHARS = re.compile(r"[A-Za-z0-9_]")
 

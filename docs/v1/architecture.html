@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.3 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -540,6 +540,10 @@ warning, so an expected decline is distinguishable from a bug in stderr:</p>
 <td><code>unsupported construct, passed through: …</code></td>
 </tr>
 <tr>
+<td>the render would respell the statement, and casing it from source is not possible either</td>
+<td><code>formatting would respell this statement, passed through unformatted: …</code> — the first half is usually recoverable (see below); this is what is left</td>
+</tr>
+<tr>
 <td>the output would not AST-compare equal</td>
 <td><code>formatting would change semantics, passed through unformatted: …</code> — <strong>a bug report</strong>, not a decline: the renderer emitted something that means a different thing</td>
 </tr>
@@ -553,6 +557,29 @@ warning, so an expected decline is distinguishable from a bug in stderr:</p>
 </tr>
 </tbody>
 </table>
+<p><strong>A respelling is usually recovered rather than declined.</strong> sqlglot's parser
+collapses some pairs of spellings onto one node — <code>ALTER COLUMN x TYPE t</code> and
+<code>SET DATA TYPE t</code> are the same tree — so rendering from the node prints whichever
+the generator prefers. When the token census catches that, the statement is cased
+from its own source instead (<code>sourcecase.py</code>): the source text with keyword spans
+recased and every other byte untouched. Nothing is rebuilt, so nothing can be
+respelt, and the same three checks are re-run against the result.</p>
+<p>Keywords are told from identifiers by the parse tree, not by the keyword table.
+What the author wrote as a name or value is a node; the grammar around it lives
+in the generator and is on no node. A statement sqlglot could only parse as
+<code>exp.Command</code> has no such tree and still passes through.</p>
+<p>The construct in an <code>unsupported construct (…)</code> warning is the node type the
+layout engine declined to model. One node type needs translating: <code>exp.Command</code>
+is sqlglot's catch-all for syntax its parser does not model at all, so it is the
+same word for every unrelated statement that lands there. It is reported under
+the keyword sqlglot kept on the node instead — <code>unsupported construct (SET)</code>
+rather than <code>unsupported construct (Command)</code>.</p>
+<p>sqlglot logs its own fallback for those statements (<code>'SET ROLE reporting' contains unsupported syntax. Falling back to parsing as a 'Command'.</code>). The CLI
+raises that logger to <code>ERROR</code>, because sqlalign reports the same statement by
+name and with the text it passed through — the warning is a second, less
+informative copy on the same stream. The library does not touch the logger:
+<code>sqlalign.format</code> runs inside someone else's program, where silencing a
+dependency is not a formatter's business.</p>
 <p>One decline is file-wide rather than per statement: a template expression too
 short to hold a same-width placeholder (<code>{{x}}</code>) fails before splitting, so the
 whole file passes through with <code>templating not maskable, passed through: …</code>. It
