@@ -128,9 +128,11 @@ error (see [Unknown keys](#unknown-keys-are-an-error)).
 | `keyword_case` | `"upper"` \| `"lower"` | `"upper"` | Case for keywords, function names and type names. Your identifiers and string literals are never touched. |
 | `neq_style` | `"!="` \| `"<>"` | `"!="` | Spelling for the not-equal operator. |
 | `decimal_style` | `"NUMERIC"` \| `"DECIMAL"` | `"NUMERIC"` | Spelling for the `NUMERIC`/`DECIMAL` type. |
+| `body_blank_lines` | integer | `1` | Blank lines between the elements of a dollar-quoted body (`DECLARE`, `BEGIN`, each statement, `END`). Separate from `blank_lines_between_statements`, which never reaches inside a body. `0` packs the body tight. |
 | `format_dollar_bodies` | boolean | `true` | Format inside dollar-quoted (`$$`) procedure and function bodies. `false` passes the whole `CREATE FUNCTION` through byte-identical. |
 | `protect_templating` | boolean | `true` | Mask Jinja/dbt template expressions (`{{ }}`, `{% %}`, `{# #}`) before formatting so a templated model can be formatted at all. |
 | `blank_lines_between_statements` | integer, or unset | unset | Force N blank lines between every pair of statements. Unset means the house rule: one blank line between two multi-line statements, none otherwise. |
+| `dialect` | `"postgres"` \| `"redshift"` \| `"tsql"` | `postgres` | The engine the SQL will run on. Resolved per file from the config nearest it, so one command can span a Postgres tree and a Redshift one. `--dialect` overrides it. |
 | `exclude` | list of glob strings (a bare string is also accepted) | none | Skip matching files when a directory is expanded. Selects files, not style — see [Excluding files](#excluding-files). |
 
 `neq_style` and `decimal_style` exist because the parser collapses each of those
@@ -139,14 +141,8 @@ the only two places sqlalign picks for you.
 
 ### Not config keys
 
-`--dialect` and `--line-ending` are command-line only. Putting `dialect` in a
-config file is a hard error:
-
-```
-sqlalign: /home/you/warehouse/sqlalign.toml: unknown setting(s) ['dialect']; valid: ['align', 'align_targets', ...]
-```
-
-(the real message lists every valid key; elided here for width).
+`--line-ending` is the only setting with no config key. `--dialect` has one —
+see the `dialect` row above — and the flag overrides it for a one-off run.
 
 ### `width` is a target, not a limit
 
@@ -302,7 +298,7 @@ the exit code is `2`:
 
 ```
 $ sqlalign q.sql
-sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['comma_postion']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'boolean_operator_position', 'comma_position', 'decimal_style', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'width']
+sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['comma_postion']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'body_blank_lines', 'boolean_operator_position', 'clause_keyword_align', 'comma_position', 'decimal_style', 'dialect', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'river_gutter', 'select_indent', 'select_placement', 'table_alias_style', 'width']
 ```
 
 This is deliberate, and it is the opposite of what most tools do. A typo in a

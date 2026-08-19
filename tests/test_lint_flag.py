@@ -188,3 +188,54 @@ def test_a_newer_series_warns(monkeypatch):
 
 def test_an_unreadable_version_warns_rather_than_assuming(monkeypatch):
     assert "rules may have moved" in _installed(monkeypatch, "unreleased").version_warning()
+
+
+# ---- --sqlfluff-config -------------------------------------------------------
+#
+# sqlfluff's discovery only ever walks UPWARDS from the file being linted, so a
+# team's shared config that lives outside the repository is unreachable by it --
+# which is exactly where a shared config tends to live.
+
+def _company_config(tmp_path, excludes):
+    path = tmp_path / "company.sqlfluff"
+    path.write_text(f"[sqlfluff]\ndialect = postgres\n"
+                    f"exclude_rules = {excludes}\nmax_line_length = -1\n")
+    return path
+
+
+def test_an_explicit_config_beats_the_discovered_one(tmp_path, capsys):
+    pytest.importorskip("sqlfluff")
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".sqlfluff").write_text(
+        "[sqlfluff]\ndialect = postgres\nexclude_rules = layout\nmax_line_length = -1\n")
+    (project / "q.sql").write_text("select a from t join u on u.i = t.i;\n")
+
+    main(["--lint", "--check", str(project / "q.sql")])
+    discovered = capsys.readouterr().out.count("\nL:")
+
+    shared = _company_config(tmp_path, "layout,ambiguous.join,structure.join_condition_order")
+    main(["--lint", "--check", "--sqlfluff-config", str(shared), str(project / "q.sql")])
+    explicit = capsys.readouterr().out.count("\nL:")
+
+    assert explicit < discovered, (
+        f"the explicit config changed nothing: {explicit} vs {discovered} findings")
+
+
+def test_it_is_refused_without_lint(tmp_path):
+    """Accepting it silently would leave a reader believing their config was
+    used, which is worse than the flag not existing."""
+    shared = _company_config(tmp_path, "layout")
+    sql = tmp_path / "q.sql"
+    sql.write_text("select a from t;\n")
+    with pytest.raises(SystemExit) as exit_info:
+        main(["--sqlfluff-config", str(shared), str(sql)])
+    assert exit_info.value.code == 2
+
+
+def test_a_missing_config_is_refused(tmp_path):
+    sql = tmp_path / "q.sql"
+    sql.write_text("select a from t;\n")
+    with pytest.raises(SystemExit) as exit_info:
+        main(["--lint", "--sqlfluff-config", str(tmp_path / "nope"), str(sql)])
+    assert exit_info.value.code == 2

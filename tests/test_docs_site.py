@@ -275,3 +275,71 @@ def test_the_site_does_not_depend_on_what_is_installed():
 
     reads = {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
     assert "__version__" not in reads
+
+
+def test_every_config_key_is_in_the_configuration_reference():
+    """The counterpart to the flag check above, and it was needed.
+
+    `dialect` became a config key in 1.2 and the docs went on saying it was not
+    one for two releases -- `dialects.md` told you it was "a command-line flag
+    only" and that putting it in a config was an error, three paragraphs above
+    the section telling you to put it in a config. Nothing caught it because
+    nothing compared the docs to the code.
+    """
+    from sqlalign.configfile import KNOWN_KEYS
+
+    reference = (ROOT / "docs" / "guide" / "configuration.md").read_text()
+    missing = [k for k in sorted(KNOWN_KEYS) if f"| `{k}` |" not in reference]
+    assert not missing, f"config keys with no row in configuration.md: {missing}"
+
+
+def test_the_valid_key_lists_printed_in_the_docs_are_the_real_one():
+    """Those lists are transcripts of an error message. A stale one tells a
+    reader a key they have is invalid, or that one they need does not exist."""
+    import re
+
+    from sqlalign.configfile import KNOWN_KEYS
+
+    real = str(sorted(KNOWN_KEYS))
+    for page in (ROOT / "docs" / "guide").glob("*.md"):
+        for printed in re.findall(r"unknown setting\(s\) \[[^\]]*\]; valid: (\[[^\]]*\])",
+                                  page.read_text()):
+            if printed == "[...]":            # deliberately elided for width
+                continue
+            assert printed == real, f"{page.name} prints a stale key list: {printed}"
+
+
+@pytest.mark.parametrize(("sql", "dialect", "expected"), [
+    ("select * from t pivot (sum(x) for y in ('a'));", "postgres",
+     "PIVOT: this dialect has no such syntax"),
+    ("create table t (a real not null, b int);", "tsql",
+     "tsql: type whose spelling sqlglot cannot preserve"),
+    ("select cast(x as ntext) from t;", "tsql",
+     "tsql: type whose spelling sqlglot cannot preserve"),
+])
+def test_the_decline_names_quoted_in_the_docs_are_the_ones_produced(sql, dialect, expected):
+    """1.3 started naming the construct inside `unsupported construct (…)`, and
+    the transcripts in the guide still showed the unnamed form."""
+    from sqlalign.formatter import format_sql
+
+    result = format_sql(sql, dialect)
+    assert [d.reason for d in result.declines] == [expected]
+    quoted = f"unsupported construct ({expected})"
+    pages = [p.read_text() for p in (ROOT / "docs" / "guide").glob("*.md")]
+    assert any(quoted in page for page in pages), f"no doc shows {quoted!r}"
+
+
+def test_every_flag_appears_in_the_readme_too():
+    """The guide had its own version of this check; the README did not, and had
+    drifted three flags behind by 1.3 -- `--lines`, `--sqlfluff-config` and
+    `--init` were all shipped and undocumented there.
+
+    `--help` and `--version` are argparse's own and need no row.
+    """
+    from sqlalign.cli import build_parser
+
+    readme = (ROOT / "README.md").read_text()
+    flags = {opt for action in build_parser()._actions for opt in action.option_strings
+             if opt.startswith("--")} - {"--help", "--version"}
+    missing = sorted(f for f in flags if f not in readme)
+    assert not missing, f"flags with no README row: {missing}"

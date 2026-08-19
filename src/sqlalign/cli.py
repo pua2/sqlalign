@@ -205,6 +205,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dialect", choices=sorted(SUPPORTED_DIALECTS), default=None,
                    help="the SQL dialect to parse and print. Overrides a "
                         "`dialect` in the config file (default: postgres)")
+    p.add_argument("--lines", action="append", metavar="START:END", default=None,
+                   help="format only statements overlapping these 1-based, "
+                        "inclusive line numbers; the rest of the file is left "
+                        "byte-identical. Repeatable. Applies to one file (or "
+                        "stdin), since line numbers mean nothing across several")
     p.add_argument("--line-ending", choices=["auto", "lf", "crlf"], default="auto",
                    help="line endings to write: auto preserves the file's own (default)")
     # Config-file plumbing.
@@ -235,6 +240,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--lint", action="store_true",
                    help="after formatting, run sqlfluff over the result "
                         "(needs the optional `sqlalign[lint]` extra)")
+    p.add_argument("--sqlfluff-config", metavar="PATH", type=Path,
+                   help="lint with this sqlfluff config instead of the one "
+                        "discovered next to each file. For a shared config that "
+                        "lives outside the repository, which discovery cannot "
+                        "reach. Requires --lint")
     p.add_argument("--print-sqlfluff-config", action="store_true",
                    help="print a .sqlfluff that lets sqlfluff run alongside "
                         "sqlalign without fighting it, and exit")
@@ -294,7 +304,48 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _quiet_sqlglot_fallbacks() -> None:
+    """Stop sqlglot narrating its own parser fallbacks on our stderr.
+
+    A statement sqlglot cannot model logs `'SET ROLE reporting' contains
+    unsupported syntax. Falling back to parsing as a 'Command'.` -- unprefixed,
+    interleaved with sqlalign's output, and about an internal detail of the
+    parser. sqlalign reports the same statement itself, by name and with the
+    text it passed through, so the warning is a second and worse copy of a
+    message the user already gets.
+
+    Done in the CLI rather than the library: `sqlalign.format` runs inside
+    someone else's program, and silencing a dependency's logger there is not a
+    formatter's business.
+    """
+    import logging
+    logging.getLogger("sqlglot").setLevel(logging.ERROR)
+
+
+def parse_line_ranges(values: list[str]) -> tuple[tuple[int, int], ...]:
+    """`["3:9", "20"]` as 1-based inclusive spans.
+
+    A bare number is the single line, so `--lines 12` is the obvious thing and
+    does not have to be written `--lines 12:12`.
+    """
+    ranges = []
+    for value in values:
+        start, sep, end = value.partition(":")
+        try:
+            first = int(start)
+            last = int(end) if sep else first
+        except ValueError:
+            raise ValueError(f"expected START:END, got {value!r}") from None
+        if first < 1:
+            raise ValueError(f"line numbers start at 1, got {value!r}")
+        if last < first:
+            raise ValueError(f"range ends before it starts: {value!r}")
+        ranges.append((first, last))
+    return tuple(ranges)
+
+
 def main(argv: list[str] | None = None) -> int:
+    _quiet_sqlglot_fallbacks()
     p = build_parser()
     args = p.parse_args(argv)
 
@@ -347,6 +398,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"sqlalign: {w}", file=sys.stderr)
         return style
 
+    if args.sqlfluff_config is not None:
+        if not args.lint:
+            # Accepting it silently would leave a reader believing their config
+            # was used, which is worse than the flag being unavailable.
+            p.error("--sqlfluff-config only applies to --lint")
+        if not args.sqlfluff_config.is_file():
+            p.error(f"--sqlfluff-config: no such file: {args.sqlfluff_config}")
+
     if args.init:
         # Refuses to overwrite: a config is a decision a team already made, and
         # a starter is only ever the first one.
@@ -381,6 +440,19 @@ def main(argv: list[str] | None = None) -> int:
     # would either format one input twice or silently drop the others.
     if "-" in args.files and len(args.files) > 1:
         p.error("`-` reads stdin and cannot be combined with file arguments")
+
+    line_ranges = None
+    if args.lines is not None:
+        try:
+            line_ranges = parse_line_ranges(args.lines)
+        except ValueError as e:
+            p.error(f"--lines: {e}")
+        # One range against many files would mean "line 12 of each", which
+        # nobody wants and which would silently reformat the wrong thing. A
+        # directory is the same mistake spelled shorter -- it expands to every
+        # .sql file under it.
+        if len(args.files) != 1 or Path(args.files[0]).is_dir():
+            p.error("--lines applies to a single file (or `-`)")
 
     if args.print_sqlfluff_config:
         # Resolved against the first file like --show-config, so the generated
@@ -481,7 +553,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write(original)
             continue
         try:
-            result = format_sql(normalized, dialect_for(path), style)
+            result = format_sql(normalized, dialect_for(path), style, line_ranges)
         except Exception as e:  # parse/safety failures surface as exit 2, file untouched
             print(f"sqlalign: {name}: {e}", file=sys.stderr)
             rc = 2
@@ -529,7 +601,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.lint:
             # Lint what would be written, so --check and --stdout report on the
             # formatted result rather than on whatever is currently on disk.
-            code, out, err = lint(path, formatted, style, dialect_for(path))
+            code, out, err = lint(path, formatted, style, dialect_for(path),
+                                  args.sqlfluff_config)
             sys.stdout.write(out)
             sys.stderr.write(err)
             if code:

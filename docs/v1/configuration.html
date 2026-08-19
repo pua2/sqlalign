@@ -167,7 +167,7 @@ dl.meta dd { margin:0; }
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <a class="brand" href="../index.html">sqlalign</a>
-  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.2 (current)</option></select>
+  <select class="version" aria-label="Documentation version"><option value="v1" selected>1.3 (current)</option></select>
   <div class="search">
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off"
            aria-label="Search documentation">
@@ -394,6 +394,12 @@ error (see <a href="#unknown-keys-are-an-error">Unknown keys</a>).</p>
 <td>Spelling for the <code>NUMERIC</code>/<code>DECIMAL</code> type.</td>
 </tr>
 <tr>
+<td><code>body_blank_lines</code></td>
+<td>integer</td>
+<td><code>1</code></td>
+<td>Blank lines between the elements of a dollar-quoted body (<code>DECLARE</code>, <code>BEGIN</code>, each statement, <code>END</code>). Separate from <code>blank_lines_between_statements</code>, which never reaches inside a body. <code>0</code> packs the body tight.</td>
+</tr>
+<tr>
 <td><code>format_dollar_bodies</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
@@ -412,6 +418,12 @@ error (see <a href="#unknown-keys-are-an-error">Unknown keys</a>).</p>
 <td>Force N blank lines between every pair of statements. Unset means the house rule: one blank line between two multi-line statements, none otherwise.</td>
 </tr>
 <tr>
+<td><code>dialect</code></td>
+<td><code>&quot;postgres&quot;</code> | <code>&quot;redshift&quot;</code> | <code>&quot;tsql&quot;</code></td>
+<td><code>postgres</code></td>
+<td>The engine the SQL will run on. Resolved per file from the config nearest it, so one command can span a Postgres tree and a Redshift one. <code>--dialect</code> overrides it.</td>
+</tr>
+<tr>
 <td><code>exclude</code></td>
 <td>list of glob strings (a bare string is also accepted)</td>
 <td>none</td>
@@ -423,11 +435,8 @@ error (see <a href="#unknown-keys-are-an-error">Unknown keys</a>).</p>
 pairs to a single node, so a spelling has to be chosen when printing. They are
 the only two places sqlalign picks for you.</p>
 <h3 id="not-config-keys">Not config keys<a class="anchor" href="#not-config-keys" aria-label="Link to this section">#</a></h3>
-<p><code>--dialect</code> and <code>--line-ending</code> are command-line only. Putting <code>dialect</code> in a
-config file is a hard error:</p>
-<pre><code>sqlalign: /home/you/warehouse/sqlalign.toml: unknown setting(s) ['dialect']; valid: ['align', 'align_targets', ...]
-</code></pre>
-<p>(the real message lists every valid key; elided here for width).</p>
+<p><code>--line-ending</code> is the only setting with no config key. <code>--dialect</code> has one —
+see the <code>dialect</code> row above — and the flag overrides it for a one-off run.</p>
 <h3 id="width-is-a-target-not-a-limit"><code>width</code> is a target, not a limit<a class="anchor" href="#width-is-a-target-not-a-limit" aria-label="Link to this section">#</a></h3>
 <p><code>width</code> drives wrapping decisions, but a construct anchored deep in an indent is
 allowed some room past it rather than being shredded. On the multi-join sample,
@@ -577,7 +586,7 @@ nothing else.</p>
 <p>A key sqlalign does not recognise stops the run. The file is left untouched and
 the exit code is <code>2</code>:</p>
 <pre><code>$ sqlalign q.sql
-sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['comma_postion']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'boolean_operator_position', 'comma_position', 'decimal_style', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'width']
+sqlalign: /home/you/warehouse/.sqlalign.toml: unknown setting(s) ['comma_postion']; valid: ['align', 'align_targets', 'blank_lines_between_statements', 'body_blank_lines', 'boolean_operator_position', 'clause_keyword_align', 'comma_position', 'decimal_style', 'dialect', 'exclude', 'format_dollar_bodies', 'keyword_case', 'neq_style', 'on_placement', 'preset', 'protect_templating', 'river_gutter', 'select_indent', 'select_placement', 'table_alias_style', 'width']
 </code></pre>
 <p>This is deliberate, and it is the opposite of what most tools do. A typo in a
 committed config that is silently ignored means a whole team believes it has a

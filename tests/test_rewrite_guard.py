@@ -16,6 +16,13 @@ So order is deliberately not compared here. `GROUP BY ROLLUP(a, b), c` printed
 as `GROUP BY c, ROLLUP(a, b)` is the same grouping sets, and `NOT x IS NULL`
 printed as `x IS NOT NULL` is one tree in the dialects that cannot tell the two
 apart. A check that fired on those would be a check somebody turned off.
+
+**What the guard does about a respelling changed in 1.3 and its guarantee did
+not.** These statements used to pass through untouched. Now the engine falls
+back to casing them from their own source, which cannot lose a spelling because
+it never rebuilds anything -- so they format, and still come out spelt as
+written. The property asserted here is the one that matters either way: what
+comes out is never a respelling of what went in.
 """
 import pytest
 
@@ -36,11 +43,68 @@ RESPELT = "output would respell the statement"
      "a different function"),
     ("redshift", "ALTER TABLE t SET (fillfactor = 70);", "becomes SET TABLE PROPERTIES"),
 ])
-def test_a_respelt_statement_is_passed_through(dialect, sql, what):
-    """Each of these formatted silently before the guard, changed."""
+def test_a_statement_the_generator_would_respell_comes_out_as_written(dialect, sql, what):
+    """Each of these formatted silently before the guard, changed.
+
+    Two assertions, and the first is the one that would rot: the generator must
+    still be respelling these. If sqlglot ever stops, this case has left the
+    category and the fallback below is no longer what is being exercised.
+    """
+    import sqlglot
+    assert sqlglot.parse_one(sql, dialect=dialect).sql(dialect=dialect) + ";" != sql, (
+        f"sqlglot no longer respells this ({what}): the case has moved")
+
     result = format_sql(sql, dialect)
-    assert [d.reason for d in result.declines] == [RESPELT], what
+    assert not result.declines, [d.reason for d in result.declines]
+    assert spelling_equal(sql, result.text, dialect), f"{what}: {result.text}"
+
+
+@pytest.mark.parametrize(("dialect", "sql"), [
+    ("postgres", "SET ROLE reporting;"),
+    ("postgres", "RESET ROLE;"),
+])
+def test_a_command_still_passes_through(dialect, sql):
+    """The fallback needs a parse to tell a keyword from an identifier. An
+    `exp.Command` is raw text with no content nodes, so every word in it would
+    read as grammar and `SET ROLE reporting` would come out `SET ROLE
+    REPORTING` -- a renamed role. Those keep passing through."""
+    result = format_sql(sql, dialect)
+    assert result.declines, "a Command must not be cased from source"
     assert result.text == sql, "a decline must pass the original through unchanged"
+
+
+@pytest.mark.parametrize(("dialect", "sql", "expected"), [
+    ("postgres", "alter table t alter column x type text;",
+     "ALTER TABLE t ALTER COLUMN x TYPE TEXT;"),
+    ("postgres", "drop function f();", "DROP FUNCTION f();"),
+    ("postgres", "alter table t add column c integer array;",
+     "ALTER TABLE t ADD COLUMN c INTEGER ARRAY;"),
+    ("postgres", "set search_path to public;", "SET search_path TO public;"),
+    ("postgres", "set local work_mem = '64MB';", "SET LOCAL work_mem = '64MB';"),
+])
+def test_the_fallback_cases_keywords_and_nothing_else(dialect, sql, expected):
+    """It is a formatter, not a passthrough with extra steps: the keywords come
+    out cased. Identifiers keep the case the author gave them -- `search_path`
+    and `work_mem` are the author's words and stay lowercase."""
+    result = format_sql(sql, dialect)
+    assert not result.declines, [d.reason for d in result.declines]
+    assert result.text.strip() == expected
+
+
+@pytest.mark.parametrize("sql", [
+    "alter table t add column year int;",          # `year` is a keyword word
+    "alter table t add column name text;",
+    "alter table t add column value numeric;",
+    'alter table "Type" add column "Order" text;',  # quoted: case is meaning
+])
+def test_an_identifier_that_looks_like_a_keyword_is_left_alone(sql):
+    """The reason the fallback reads the tree instead of the keyword table. A
+    column named `year` is in the tree; the `ADD COLUMN` around it is not."""
+    result = format_sql(sql, "postgres")
+    assert not result.declines, [d.reason for d in result.declines]
+    for word in ("year", "name", "value", '"Type"', '"Order"'):
+        if word in sql:
+            assert word in result.text, f"{word} was recased: {result.text}"
 
 
 @pytest.mark.parametrize("dialect,sql", [

@@ -41,6 +41,7 @@ flags change that.
 | `--check` | off | Write nothing. Print `would reformat <path>` for each file that is not already formatted. Exit `1` if any is. |
 | `--stdout` | off | Write the formatted result to stdout instead of rewriting the file. Exit `0`. |
 | `--diff` | off | Write nothing. Print a unified diff of what would change. Exit `1` if anything would. |
+| `--lines START:END` | off | Format only statements overlapping these 1-based, inclusive lines; the rest of the file comes back byte-identical. Repeatable. A bare `--lines 12` is that one line. Applies to a single file or `-`. |
 | `--line-ending {auto,lf,crlf}` | `auto` | Line endings to write. `auto` preserves each file's own — a CRLF file stays CRLF, and an already-formatted CRLF file does not report a spurious diff. |
 
 **`--check`, `--stdout` and `--diff` are mutually exclusive.** Passing two is an
@@ -120,6 +121,29 @@ else is an error unless you pass `--no-strict-config`.
 `decimal_style` · `dialect` · `exclude` · `format_dollar_bodies` · `keyword_case` ·
 `neq_style` · `on_placement` · `preset` · `protect_templating` · `river_gutter` ·
 `select_indent` · `select_placement` · `table_alias_style` · `width`
+
+## Formatting a selection
+
+```console
+$ sqlalign --lines 40:58 models/orders.sql        # just those lines
+$ sqlalign --lines 12 --lines 40:58 orders.sql    # two selections
+$ sqlalign --diff --lines 40:58 orders.sql        # review before writing
+```
+
+**The unit is the statement, not the line.** Half a statement does not parse, so
+a range starting or ending inside one formats that statement entire — which is
+also what a dragged editor selection means. A range that covers only blank lines
+selects nothing and the file is left alone.
+
+Everything outside the range is byte-identical, including the blank lines around
+it. Asking for line 12 is not asking for the spacing at line 40 to be
+normalised.
+
+The use this exists for is adopting sqlalign on a repository nobody wants to
+reformat in one commit: format the lines your change touches, leave the rest,
+and the review stays about your change. For an editor filter that hands over
+just the selected text — a visual selection piped through `:!` in vim — use
+stdin instead: `sqlalign -` formats what it is given and needs no line numbers.
 
 `--line-ending` is the only setting with no config key. Three
 of the four `--no-*` flags map onto the positive keys: `--no-align` is

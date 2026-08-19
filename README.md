@@ -338,11 +338,14 @@ would otherwise mean a team believes it has a setting it doesn't have.
 | `--isolated` | off | ignore any config file |
 | `--print-sqlfluff-config` | — | print a `.sqlfluff` that lets sqlfluff run alongside sqlalign, and exit |
 | `--lint` | off | after formatting, run sqlfluff over the result (needs `pip install 'sqlalign[lint]'`) |
+| `--sqlfluff-config PATH` | discovered | point `--lint` at a config outside the repository — one shared ruleset, many checkouts |
+| `--lines START:END` | off | format only statements overlapping these 1-based, inclusive lines; the rest of the file stays byte-identical. Repeatable; one file or `-` |
 | `--body-blank-lines N` | `1` | blank lines between the elements of a `$$` body |
 | `--gui` | — | *(experimental)* open a settings panel with a live preview, and exit |
 | `--report` | off | print a coverage summary: how many statements formatted, and what the rest declined on. Adds output without changing the mode — pair with `--check` to survey without writing |
 | `--max-declines N` | — | exit 1 if more than N statements pass through unformatted (implies `--report`) |
 | `--show-config` | off | print effective settings as TOML and exit |
+| `--init` | — | write a starter `.sqlalign.toml` beside the file and exit |
 | `--no-strict-config` | off | warn on unknown config keys instead of failing |
 
 `--neq-style` and `--decimal-style` exist because sqlglot's parser collapses each

@@ -1,6 +1,6 @@
 import contextvars
 from contextlib import contextmanager
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 from sqlglot import exp
 from sqlglot.dialects.postgres import Postgres
@@ -29,6 +29,59 @@ def render_style(style: Style):
         yield
     finally:
         _RENDER_STYLE.reset(token)
+
+
+class Source(NamedTuple):
+    """The statement being rendered, as the author wrote it."""
+
+    sql: str
+    dialect: str
+    literals: dict[str, str]        # uppercase form -> spelling, see `as_written`
+
+
+# What sqlglot normalised away is still in the source, and this is how the
+# renderer reaches it. `INTERVAL '14 days'` parses to `Var(this=DAYS)`, so the
+# author's spelling is gone by the time the generator runs; `SET x TO y` has no
+# node recording that `TO` was written rather than `=`.
+#
+# Ambient for the same reason the style is: the generator is reached through
+# ~57 `render_expr` sites, none of which have the source to pass down.
+_SOURCE: contextvars.ContextVar[Source | None] = contextvars.ContextVar(
+    "sqlalign_source", default=None)
+
+
+def set_source(sql: str, dialect: str):
+    """Make `sql` the statement `as_written` and `source_sql` answer for.
+
+    A set/reset pair rather than a context manager: the caller is the
+    per-statement loop in `_format_all`, which already has the `finally` that
+    advances its position, and threading a `with` through that block would
+    reindent it without making anything clearer.
+    """
+    from sqlalign.spelling import literal_spellings
+    return _SOURCE.set(Source(sql, dialect, literal_spellings(sql, dialect)))
+
+
+def reset_source(token) -> None:
+    _SOURCE.reset(token)
+
+
+def source_sql() -> str | None:
+    """The source of the statement being rendered, when one is set."""
+    source = _SOURCE.get()
+    return source.sql if source is not None else None
+
+
+def as_written(literal: str) -> str:
+    """`literal` respelt as the source spelt it, when the source spelt it.
+
+    Case only: the lookup is by uppercase form, so a literal the source does not
+    contain comes back unchanged and a substitution can never introduce content
+    that was not written. A statement writing one literal two ways offers
+    neither spelling, so this returns such a literal unchanged.
+    """
+    source = _SOURCE.get()
+    return literal if source is None else source.literals.get(literal.upper(), literal)
 
 
 # Cast-form discriminator (v30.14, version-pinned; revisit on sqlglot upgrade):
@@ -64,6 +117,22 @@ class _HouseCastMixin:
         if sql == "DECIMAL" or sql.startswith("DECIMAL("):
             return target + sql[len("DECIMAL"):]
         return sql
+
+    def interval_sql(self, expression: exp.Interval) -> str:
+        """`INTERVAL '14 days'`, not `INTERVAL '14 DAYS'`.
+
+        sqlglot uppercases the unit while parsing, so rendering from the node
+        alone always respells a lowercase interval. Since 1.2's token census
+        compares string literals byte-for-byte, that respelling is caught -- and
+        `interval '14 days'` is common enough that catching it means the whole
+        statement stops formatting. The source spelling is put back instead.
+        """
+        sql = super().interval_sql(expression)
+        head, quote, rest = sql.partition("'")
+        if not quote:
+            return sql
+        body, quote, tail = rest.rpartition("'")
+        return f"{head}'{as_written(body)}'{tail}"
 
     def neq_sql(self, expression: exp.NEQ) -> str:
         # sqlglot erases the source `<>`/`!=` spelling at parse, so a form must be

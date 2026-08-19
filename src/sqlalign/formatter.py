@@ -4,10 +4,11 @@ from collections import namedtuple
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import TokenError
+from sqlglot.tokens import TokenType
 
-from sqlalign import keywordcase, plpgsql, spelling, templating
+from sqlalign import keywordcase, plpgsql, sourcecase, spelling, templating
 from sqlalign.align import apply_align_targets, render
-from sqlalign.casing import parse_dialect, render_style
+from sqlalign.casing import parse_dialect, render_style, reset_source, set_source
 from sqlalign.commas import apply_comma_position
 from sqlalign.layout import Unsupported, layout_statement
 from sqlalign.layout import comments as _comments
@@ -291,10 +292,35 @@ def comment_text(sql: str, dialect: str) -> list[str]:
     sqlglot hangs a comment off the token it precedes rather than putting it in
     the tree, which is why the AST check cannot see one:
     `ast_equal("SELECT a -- note", "SELECT a", ...)` is True.
+
+    A `$$ ... $$` body is ONE token, so its comments are not among that token's
+    own -- this returned `[]` for an entire procedure. `comments_equal` was then
+    trivially true for anything inside one, and `DECLARE n int; -- count from
+    the source table` shipped as `-- count FROM the source TABLE;`, keyword-cased
+    with a semicolon inside the comment, no decline. Descending into the body
+    puts those comments back under the guard.
     """
     tokenizer = sqlglot.Dialect.get_or_raise(dialect).tokenizer_class()
-    return [c.strip() for token in tokenizer.tokenize(sql)
-            for c in (token.comments or [])]
+    comments = []
+    for token in tokenizer.tokenize(sql):
+        comments += [c.strip() for c in (token.comments or [])]
+        if (token.token_type is TokenType.HEREDOC_STRING
+                and len(token.text) < len(sql)
+                and _maybe_comment(token.text)):
+            comments += comment_text(token.text, dialect)
+    return comments
+
+
+def _maybe_comment(text: str) -> bool:
+    """Whether `text` is worth tokenizing a second time to look for comments.
+
+    Descending into every body doubled the tokenizing work for every procedure
+    in a tree, and most bodies hold no comment at all. Two substring scans
+    decide it: a body with neither marker cannot contain one, and a body with a
+    marker is tokenized properly rather than pattern-matched, so a `--` inside a
+    string literal still does not count as a comment.
+    """
+    return "--" in text or "/*" in text
 
 
 def comments_equal(a: str, b: str, dialect: str) -> bool:
@@ -304,9 +330,9 @@ def comments_equal(a: str, b: str, dialect: str) -> bool:
     the end of the row above -- where it sits is expected to change, what it
     says is not.
 
-    A `$$` body is a single string literal to the tokenizer, so comments inside
-    one are invisible here. Those statements are covered structurally by
-    `_plpgsql_ast_equal`, which compares each embedded statement in turn.
+    Comments inside a `$$` body are included: the body is one token to the
+    tokenizer, and `comment_text` descends into it rather than leaving those
+    comments to a structural check that casefolds them away.
     """
     try:
         return comment_text(a, dialect) == comment_text(b, dialect)
@@ -316,6 +342,47 @@ def comments_equal(a: str, b: str, dialect: str) -> bool:
         # gets a refusal rather than an exception -- if the comments cannot be
         # compared, the honest answer is that they were not verified.
         return False
+
+
+def _overlaps(text: str, pos: int, stmt: str, lines: tuple[tuple[int, int], ...]) -> bool:
+    """Whether `stmt`, sitting at `pos` in `text`, touches any of `lines`.
+
+    Measured over the statement's content rather than the raw slice: a slice
+    carries the blank lines that separated it from the one before, and counting
+    those would make an empty line above a statement select it.
+    """
+    lead = len(stmt) - len(stmt.lstrip("\n"))
+    body = stmt.strip("\n")
+    if not body.strip():
+        return False
+    first = text.count("\n", 0, pos + lead) + 1
+    last = first + body.count("\n")
+    return any(start <= last and first <= end for start, end in lines)
+
+
+def _cased_from_source(stmt: str, node, dialect: str, style, snippet: str) -> str:
+    """The statement cased from its own source, or `Rewrite` if that is unsafe.
+
+    Reached only when the render respelt something. The generator has already
+    proved it cannot print this statement as written, so the choice is between
+    passing it through untouched and formatting it the one way that cannot lose
+    a spelling: from the source, changing nothing but keyword case.
+
+    Every check the render had to pass is re-run here, because this output is
+    not the one they were run against. A `Command` has no parse to tell grammar
+    from content, so it is not eligible and falls straight through.
+    """
+    if _has_body(stmt, dialect) or not sourcecase.renders_from_source(node):
+        # A body is excluded deliberately. Casing a whole procedure from source
+        # would trade the layout of every clause in it for the one clause that
+        # respelt, which is a worse outcome than passing it through.
+        raise Rewrite(f"formatting respelled the statement near: {snippet}")
+    cased = sourcecase.recase(stmt, node, dialect, style.keyword_case)
+    if (ast_equal(stmt, cased, dialect)
+            and comments_equal(stmt, cased, dialect)
+            and spelling_equal(stmt, cased, dialect)):
+        return cased
+    raise Rewrite(f"formatting respelled the statement near: {snippet}")
 
 
 def _has_body(sql: str, dialect: str) -> bool:
@@ -344,10 +411,41 @@ def spelling_equal(a: str, b: str, dialect: str) -> bool:
     reformat is equal and only a change the author did not ask for is not.
     """
     try:
+        parts_a = plpgsql.split_body(a)
+        parts_b = plpgsql.split_body(b)
+        if parts_a is not None and parts_b is not None:
+            return _plpgsql_spelling_equal(parts_a, parts_b, dialect)
         return (spelling.token_census(a, dialect)
                 == spelling.token_census(b, dialect))
     except TokenError:
         return True     # unreadable input declines earlier; do not invent a reason
+
+
+def _plpgsql_spelling_equal(parts_a, parts_b, dialect: str) -> bool:
+    """The census for a statement with a `$$` body, clause against clause.
+
+    A whole-statement census cannot do this. The tokenizer sees a body as one
+    token, so it compares as opaque and sees nothing inside; descending into it
+    compares a laid-out body against an unformatted one, and that differs for
+    reasons which are not rewrites -- 102 tests said so. Clause by clause,
+    against the clause it was rendered from, is the comparison that means
+    something, and `body_clauses` splits both sides the same way by design.
+
+    Until this existed, `_has_body` excluded these statements from the census
+    outright, so a respelling inside a procedure had nothing catching it -- which
+    is how `INTERVAL '14 days'` shipped as `'14 DAYS'` from inside one.
+    """
+    head_a, body_a, tail_a = parts_a
+    head_b, body_b, tail_b = parts_b
+    if (spelling.token_census(head_a + tail_a, dialect)
+            != spelling.token_census(head_b + tail_b, dialect)):
+        return False
+    clauses_a = plpgsql.body_clauses(body_a)
+    clauses_b = plpgsql.body_clauses(body_b)
+    if len(clauses_a) != len(clauses_b):
+        return False
+    return all(spelling.token_census(x, dialect) == spelling.token_census(y, dialect)
+               for x, y in zip(clauses_a, clauses_b, strict=False))
 
 
 def ast_equal(a: str, b: str, dialect: str) -> bool:
@@ -555,11 +653,18 @@ def _join_statements(entries, blanks=None):
     return "".join(pieces)
 
 
-def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE) -> FormatResult:
+def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE,
+               lines: tuple[tuple[int, int], ...] | None = None) -> FormatResult:
     """Format `text`. `style` carries every knob; it is also published as the
     ambient render style for the duration of the call so `render_expr` (called
     from ~57 handler sites) can read output-spelling knobs without every handler
-    signature having to carry them."""
+    signature having to carry them.
+
+    `lines` narrows the work to statements overlapping the given 1-based
+    inclusive line ranges; everything else comes back byte-identical. Whole
+    statements, because half a statement does not parse -- a range that starts
+    mid-statement formats that statement entire.
+    """
     if dialect not in SUPPORTED_DIALECTS:
         # Refuse rather than mis-format. The handlers emit keywords chosen for
         # the verified dialects, and the AST check cannot catch one that is
@@ -569,7 +674,7 @@ def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE) -> Fo
             f"{', '.join(sorted(SUPPORTED_DIALECTS))}")
     with render_style(style):
         if not style.protect_templating or not templating.has_templating(text):
-            return _format_all(text, dialect, style)
+            return _format_all(text, dialect, style, lines)
         # Templated SQL (dbt/Jinja) does not parse. Mask each expression with a
         # same-WIDTH placeholder so every alignment column is computed against the
         # real width, format normally, then restore. The whole pipeline: layout,
@@ -584,7 +689,10 @@ def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE) -> Fo
             # exactly the way --report exists to prevent.
             return FormatResult(text, [f"templating not maskable, passed through: {e}"],
                                 1, (Decline("unsupported", "templating not maskable"),))
-        result = _format_all(masked, dialect, style)
+        # Masking replaces each template expression with a placeholder of the
+        # same width, so line numbers are the same on both sides and a range
+        # given against the real file still selects the right statements.
+        result = _format_all(masked, dialect, style, lines)
         # Rebuilt for the unmasked text only; the counts ride through unchanged.
         # Dropping them blinded --report and --max-declines for every templated
         # file, which is most of a dbt project.
@@ -592,7 +700,8 @@ def format_sql(text: str, dialect: str = "postgres", style: Style = HOUSE) -> Fo
                             result.warnings, result.statements, result.declines)
 
 
-def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
+def _format_all(text: str, dialect: str, style: Style,
+                lines: tuple[tuple[int, int], ...] | None = None) -> FormatResult:
     warnings, out, declines = [], [], []
     statements = 0
     pos = 0
@@ -601,7 +710,15 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
         out.append((piece, is_statement, _body_is_multiline(piece)))
 
     for stmt in split_statements(text, dialect):
+        literals = None
         try:
+            if lines is not None and not _overlaps(text, pos, stmt, lines):
+                # Outside the requested range: byte-identical, and not counted.
+                # Emitted as trivia rather than as a statement so the blank-line
+                # rule does not adjust the space around something the caller did
+                # not ask to have touched.
+                emit(stmt, False)
+                continue
             if not stmt.strip().rstrip(";").strip():
                 emit(stmt, False)
                 continue
@@ -642,6 +759,9 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
             # Distinct wording per class so a real bug is visible in stderr, not
             # silently indistinguishable from an expected decline.
             try:
+                # Scoped to the statement: a spelling may only be restored from
+                # the statement it was written in.
+                literals = set_source(stmt, dialect)
                 if dialect == "tsql" and _TSQL_LOSSY_TYPES.search(stmt):
                     raise Unsupported("tsql: type whose spelling sqlglot cannot preserve")
                 node0 = _first_expression(parsed)
@@ -671,13 +791,11 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                 # The AST check cannot see a rewrite sqlglot's own parser makes:
                 # both sides go through it and collapse to one tree, so
                 # `ALTER COLUMN x TYPE t` printed as `SET DATA TYPE t` compares
-                # equal. Comparing tokens catches it. Statements with a body are
-                # excluded -- the tokenizer sees a `$$` body as one string
-                # literal, so reformatting inside one reads as a changed token,
-                # and those are compared structurally by `_plpgsql_ast_equal`.
-                if not _has_body(stmt, dialect) and not spelling_equal(
-                        stmt, formatted, dialect):
-                    raise Rewrite(f"formatting respelled the statement near: {snippet}")
+                # equal. Comparing tokens catches it. A statement with a `$$`
+                # body is compared clause by clause rather than as one token
+                # stream -- see `_plpgsql_spelling_equal`.
+                if not spelling_equal(stmt, formatted, dialect):
+                    formatted = _cased_from_source(stmt, node0, dialect, style, snippet)
             except Unsupported as exc:
                 # The reason rides in the message so `--report` can name the
                 # construct, not just count the declines.
@@ -721,6 +839,8 @@ def _format_all(text: str, dialect: str, style: Style) -> FormatResult:
                 continue
             emit(formatted, True)
         finally:
+            if literals is not None:
+                reset_source(literals)
             pos += len(stmt)
     return FormatResult(_join_statements(out, style.blank_lines_between_statements),
                         warnings, statements, tuple(declines))

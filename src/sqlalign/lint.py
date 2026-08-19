@@ -65,17 +65,24 @@ def discovered_config(path: Path) -> Path | None:
     return None
 
 
-def lint(path: Path, text: str, style, dialect: str) -> tuple[int, str, str]:
+def lint(path: Path, text: str, style, dialect: str,
+         explicit_config: Path | None = None) -> tuple[int, str, str]:
     """Lint `text` as though it were `path`. Returns (returncode, stdout, stderr).
 
     The text is linted rather than the file, so `--check` and `--stdout` lint
     what would be written instead of what is currently on disk. It goes into a
     temporary file beside the original so sqlfluff's own config discovery still
     walks the real directory tree.
+
+    `explicit_config` names a sqlfluff config to use instead of that discovery --
+    a team's shared file that lives outside the repository, which discovery
+    cannot reach because it only ever walks upwards from the file being linted.
     """
-    config = discovered_config(path)
+    config = explicit_config if explicit_config is not None else discovered_config(path)
     args = ["lint"]
     generated = None
+    if explicit_config is not None:
+        args += ["--config", str(explicit_config)]
     if config is None:
         # Nothing to respect: fall back to the config that keeps the two tools
         # from contradicting each other.
